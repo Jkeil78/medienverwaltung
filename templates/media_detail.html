@@ -1,168 +1,208 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Details: {{ item.title }}</title>
-    <style>
-        body { font-family: sans-serif; padding: 2rem; background-color: #f4f4f4; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 0; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
-        
-        .header { background-color: #333; color: white; padding: 1.5rem; }
-        .header h1 { margin: 0; font-size: 1.8rem; }
-        .header .subtitle { color: #ccc; margin-top: 5px; font-size: 1rem; }
-        
-        .content { display: flex; padding: 2rem; gap: 2rem; flex-wrap: wrap; }
-        .image-placeholder { width: 250px; height: 350px; background-color: #eee; display: flex; align-items: center; justify-content: center; color: #aaa; border: 1px dashed #ccc; flex-shrink: 0; }
-        
-        .info-grid { flex-grow: 1; min-width: 300px; }
-        .info-row { border-bottom: 1px solid #eee; padding: 10px 0; display: flex; }
-        .info-label { width: 150px; font-weight: bold; color: #555; }
-        .info-value { color: #000; flex-grow: 1; }
-        
-        .description-box { margin-top: 20px; background: #f9f9f9; padding: 15px; border-radius: 5px; }
-        
-        /* TRACK LISTE STYLES */
-        .track-section { width: 100%; margin-top: 2rem; border-top: 2px solid #eee; padding-top: 1rem; }
-        .track-table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem; }
-        .track-table th, .track-table td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
-        .track-table th { background-color: #f8f9fa; }
-        
-        .add-track-form { background-color: #e9ecef; padding: 10px; border-radius: 5px; display: flex; gap: 10px; align-items: center; }
-        .add-track-form input { padding: 6px; border: 1px solid #ccc; border-radius: 3px; }
-        
-        .footer { background-color: #f8f9fa; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; }
-        
-        .btn { padding: 8px 15px; text-decoration: none; border-radius: 4px; color: white; display: inline-block; cursor: pointer; border: none; font-size: 14px;}
-        .btn-back { background-color: #6c757d; }
-        .btn-del { background-color: #dc3545; }
-        .btn-edit { background-color: #007bff; margin-right: 10px; }
-        .btn-add-track { background-color: #28a745; }
-        
-        .loc-badge { background-color: #e2e3e5; padding: 3px 8px; border-radius: 4px; }
-    </style>
-</head>
-<body>
+{% extends "base.html" %}
 
-<div class="container">
-    <div class="header">
-        <h1>{{ item.title }}</h1>
-        <div class="subtitle">{{ item.category }} &bull; {{ item.author_artist or 'Kein Autor' }} &bull; {{ item.release_year or 'Unbekanntes Jahr' }}</div>
-    </div>
-
-    <div class="content">
-        <div class="image-placeholder">
-            {% if item.image_filename %}
-                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="Cover" style="max-width:100%; max-height:100%;">
-            {% else %}
-                <span>Kein Bild vorhanden</span>
-            {% endif %}
-        </div>
-
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-label">Inventar-Nr.</div>
-                <div class="info-value"><code>{{ item.inventory_number }}</code></div>
-            </div>
-            
-            <div class="info-row">
-                <div class="info-label">Barcode / ISBN</div>
-                <div class="info-value">{{ item.barcode or '-' }}</div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Standort</div>
-                <div class="info-value">
-                    {% if item.location %}
-                        <span class="loc-badge">
-                        {% if item.location.parent %}
-                            {{ item.location.parent.name }} &rsaquo; 
-                        {% endif %}
-                        {{ item.location.name }}
-                        </span>
-                    {% else %}
-                        Unsortiert
-                    {% endif %}
-                </div>
-            </div>
-
-            <div class="info-row">
-                <div class="info-label">Status</div>
-                <div class="info-value">
-                    {% if item.lent_to %}
-                        <span style="color: red;">Verliehen an: {{ item.lent_to }}</span>
-                        <br><small>am {{ item.lent_at.strftime('%d.%m.%Y') if item.lent_at else '' }}</small>
-                    {% else %}
-                        <span style="color: green;">Verfügbar</span>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <div class="info-row">
-                <div class="info-label">Erfasst von</div>
-                <div class="info-value">{{ item.creator_user.username }} <small style="color:#888;">am {{ item.created_at.strftime('%d.%m.%Y') }}</small></div>
-            </div>
-
-            {% if item.description %}
-            <div class="description-box">
-                <strong>Beschreibung:</strong><br>
-                {{ item.description }}
-            </div>
-            {% endif %}
-        </div>
-
-        <div class="track-section">
-            <h3>Titel / Tracks</h3>
-            
-            {% if tracks %}
-            <table class="track-table">
-                <thead>
-                    <tr>
-                        <th style="width: 50px;">#</th>
-                        <th>Titel</th>
-                        <th style="width: 80px;">Dauer</th>
-                        <th style="width: 50px;"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for track in tracks %}
-                    <tr>
-                        <td>{{ track.position }}</td>
-                        <td>{{ track.title }}</td>
-                        <td>{{ track.duration or '-' }}</td>
-                        <td>
-                            <a href="{{ url_for('main.track_delete', track_id=track.id) }}" 
-                               style="color: red; text-decoration: none; font-weight: bold;"
-                               onclick="return confirm('Track löschen?');">&times;</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-                <p style="color:#888; font-style: italic;">Noch keine Tracks hinterlegt.</p>
-            {% endif %}
-
-            <form action="{{ url_for('main.track_add', item_id=item.id) }}" method="POST" class="add-track-form">
-                <input type="number" name="position" placeholder="#" style="width: 50px;" value="{{ tracks|length + 1 }}">
-                <input type="text" name="title" placeholder="Titel Name" required style="flex-grow: 1;">
-                <input type="text" name="duration" placeholder="Zeit (z.B. 3:45)" style="width: 100px;">
-                <button type="submit" class="btn btn-add-track">Hinzufügen</button>
-            </form>
-        </div>
-
-    </div>
-
-    <div class="footer">
-        <a href="{{ url_for('main.index') }}" class="btn btn-back">← Zurück zur Übersicht</a>
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Zurück zur Übersicht
+        </a>
         <div>
-            <a href="{{ url_for('main.media_edit', item_id=item.id) }}" class="btn btn-edit">Bearbeiten</a>
+            <a href="{{ url_for('main.media_edit', item_id=item.id) }}" class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Bearbeiten
+            </a>
             <a href="{{ url_for('main.media_delete', item_id=item.id) }}" 
-               class="btn btn-del"
-               onclick="return confirm('Diesen Eintrag wirklich unwiderruflich löschen?');">Löschen</a>
+               class="btn btn-danger" 
+               onclick="return confirm('Diesen Eintrag wirklich unwiderruflich löschen?');">
+                <i class="bi bi-trash"></i> Löschen
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 col-lg-3 mb-4">
+            <div class="card text-center p-3 h-100 shadow-sm">
+                {% if item.image_filename %}
+                    <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
+                         class="img-fluid rounded mb-3 border" 
+                         alt="Cover" 
+                         style="max-height: 400px; object-fit: contain;">
+                {% else %}
+                    <div class="bg-light rounded d-flex align-items-center justify-content-center mb-3 border" style="height: 300px;">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-image fs-1 d-block mb-2"></i>
+                            <span>Kein Bild</span>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <hr>
+                
+                <div class="mb-3">
+                    <small class="text-uppercase text-muted fw-bold d-block mb-1">Inventar #</small>
+                    <span class="fs-5 font-monospace">{{ item.inventory_number }}</span>
+                </div>
+                
+                <div class="mt-2">
+                    <img src="{{ url_for('main.qrcode_image', inventory_number=item.inventory_number) }}" 
+                         alt="QR Code" 
+                         class="img-thumbnail"
+                         style="width: 140px; height: 140px;">
+                    <div class="small text-muted mt-1">Scan mich</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 col-lg-9">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h1 class="h3 mb-1 text-primary">{{ item.title }}</h1>
+                            <span class="badge bg-secondary rounded-pill me-2">{{ item.category }}</span>
+                            {% if item.release_year %}
+                                <span class="text-muted"><i class="bi bi-calendar3"></i> {{ item.release_year }}</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            {% if item.lent_to %}
+                                <span class="badge bg-warning text-dark fs-6">
+                                    <i class="bi bi-person-exclamation"></i> Verliehen
+                                </span>
+                            {% else %}
+                                <span class="badge bg-success fs-6">
+                                    <i class="bi bi-check-circle"></i> Verfügbar
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <label class="col-sm-3 fw-bold text-muted">Autor / Künstler</label>
+                        <div class="col-sm-9 fs-5">{{ item.author_artist or '-' }}</div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 fw-bold text-muted">Standort</label>
+                        <div class="col-sm-9">
+                            {% if item.location %}
+                                <span class="d-inline-block px-2 py-1 bg-light border rounded">
+                                    <i class="bi bi-geo-alt-fill text-danger"></i>
+                                    {% if item.location.parent %}
+                                        {{ item.location.parent.name }} <i class="bi bi-chevron-right small text-muted"></i>
+                                    {% endif %}
+                                    {{ item.location.name }}
+                                </span>
+                            {% else %}
+                                <span class="text-muted fst-italic">Unsortiert</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 fw-bold text-muted">Status-Details</label>
+                        <div class="col-sm-9">
+                            {% if item.lent_to %}
+                                <div class="alert alert-warning py-2 mb-0 d-inline-block">
+                                    <strong>Verliehen an:</strong> {{ item.lent_to }}<br>
+                                    <small>seit dem {{ item.lent_at.strftime('%d.%m.%Y') }}</small>
+                                </div>
+                            {% else %}
+                                <span class="text-success">Im Bestand</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 fw-bold text-muted">ISBN / Barcode</label>
+                        <div class="col-sm-9 font-monospace">{{ item.barcode or '-' }}</div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label class="col-sm-3 fw-bold text-muted">Erfasst von</label>
+                        <div class="col-sm-9">
+                            <i class="bi bi-person"></i> {{ item.creator_user.username }} 
+                            <span class="text-muted ms-2 small">({{ item.created_at.strftime('%d.%m.%Y') }})</span>
+                        </div>
+                    </div>
+
+                    {% if item.description %}
+                    <hr>
+                    <h5 class="h6 fw-bold mb-2">Beschreibung / Inhalt</h5>
+                    <div class="bg-light p-3 rounded text-secondary">
+                        {{ item.description }}
+                    </div>
+                    {% endif %}
+
+                    {% if item.category in ['CD', 'Vinyl/LP'] %}
+                        <hr class="mt-5 border-secondary">
+                        <div class="d-flex align-items-center mb-3">
+                            <h5 class="h5 fw-bold mb-0 me-3"><i class="bi bi-music-note-list"></i> Trackliste</h5>
+                            <span class="badge bg-light text-dark border">{{ tracks|length }} Titel</span>
+                        </div>
+                        
+                        <div class="card border-0 bg-light">
+                            <div class="card-body p-0">
+                                {% if tracks %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th style="width:60px" class="text-center">#</th>
+                                                <th>Titel</th>
+                                                <th style="width:100px">Dauer</th>
+                                                <th style="width:50px"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for track in tracks %}
+                                            <tr>
+                                                <td class="text-center text-muted">{{ track.position }}</td>
+                                                <td class="fw-bold">{{ track.title }}</td>
+                                                <td class="font-monospace small">{{ track.duration or '' }}</td>
+                                                <td class="text-end">
+                                                    <a href="{{ url_for('main.track_delete', track_id=track.id) }}" 
+                                                       class="text-danger" 
+                                                       title="Track löschen"
+                                                       onclick="return confirm('Track löschen?')">
+                                                        <i class="bi bi-x-circle-fill"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                    <div class="p-3 text-center text-muted fst-italic">Noch keine Tracks eingetragen.</div>
+                                {% endif %}
+
+                                <div class="p-3 border-top">
+                                    <form action="{{ url_for('main.track_add', item_id=item.id) }}" method="POST" class="row g-2 align-items-center">
+                                        <div class="col-auto text-muted small fw-bold">NEUER TRACK:</div>
+                                        <div class="col-auto">
+                                            <input type="number" name="position" class="form-control form-control-sm text-center" placeholder="#" value="{{ tracks|length + 1 }}" style="width: 50px;">
+                                        </div>
+                                        <div class="col">
+                                            <input type="text" name="title" class="form-control form-control-sm" placeholder="Titel Name" required>
+                                        </div>
+                                        <div class="col-auto">
+                                            <input type="text" name="duration" class="form-control form-control-sm" placeholder="Zeit (3:45)" style="width: 80px;">
+                                        </div>
+                                        <div class="col-auto">
+                                            <button type="submit" class="btn btn-sm btn-success">
+                                                <i class="bi bi-plus-lg"></i> Hinzufügen
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    </div>
+            </div>
         </div>
     </div>
 </div>
-
-</body>
-</html>
+{% endblock %}
