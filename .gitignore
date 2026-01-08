@@ -1,0 +1,11 @@
+# Datenbank ignorieren
+*.db
+medien.db
+
+# Uploads ignorieren
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Python Cache
+__pycache__/
+*.pyc
