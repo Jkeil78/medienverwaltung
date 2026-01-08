@@ -34,14 +34,13 @@
             </div>
         </div>
 
-        <div class="col-12 col-md-8 order-md-1">
+<div class="col-12 col-md-8 order-md-1">
             <div class="card shadow-sm">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th>Name / Hierarchie</th>
-                                <th class="d-none d-sm-table-cell">Parent</th>
+                                <th>Hierarchie (Pfad)</th>
                                 <th class="text-end">Aktion</th>
                             </tr>
                         </thead>
@@ -50,25 +49,22 @@
                             <tr>
                                 <td>
                                     {% if loc.parent %}
-                                        <span class="text-muted ms-3 border-start ps-2">&rdsh;</span>
-                                    {% endif %}
-                                    <span class="fw-bold">{{ loc.name }}</span>
-                                    {% if loc.parent %}
-                                        <div class="d-sm-none small text-muted ms-4">in {{ loc.parent.name }}</div>
-                                    {% endif %}
-                                </td>
-                                <td class="d-none d-sm-table-cell">
-                                    {% if loc.parent %}
-                                        <span class="badge bg-secondary">{{ loc.parent.name }}</span>
+                                        <i class="bi bi-arrow-return-right text-muted me-2"></i>
                                     {% else %}
-                                        <span class="text-muted small">- Haupt -</span>
+                                        <i class="bi bi-folder-fill text-warning me-2"></i>
                                     {% endif %}
+                                    {{ loc.full_path }}
                                 </td>
                                 <td class="text-end">
                                     {% if loc.name != 'Unsortiert' %}
+                                        <a href="{{ url_for('main.location_edit', loc_id=loc.id) }}" 
+                                           class="btn btn-sm btn-outline-primary me-1" title="Bearbeiten">
+                                           <i class="bi bi-pencil"></i>
+                                        </a>
+                                        
                                         <a href="{{ url_for('main.location_delete', loc_id=loc.id) }}" 
                                            class="btn btn-sm btn-outline-danger"
-                                           onclick="return confirm('Löschen?')">
+                                           onclick="return confirm('Löschen? Falls noch Medien hier liegen, wird das blockiert.')">
                                            <i class="bi bi-trash"></i>
                                         </a>
                                     {% endif %}

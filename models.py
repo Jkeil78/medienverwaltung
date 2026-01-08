@@ -46,6 +46,18 @@ class Location(db.Model):
 
     def __repr__(self):
         return f'<Location {self.name}>'
+    @property
+    def full_path(self):
+        """Gibt den kompletten Pfad zurück: 'Opa > Vater > Kind'"""
+        chain = []
+        current = self
+        while current:
+            chain.insert(0, current.name)
+            current = current.parent
+            # Sicherheitsbremse gegen Endlosschleifen (falls A Parent von B und B Parent von A ist)
+            if len(chain) > 20: 
+                break 
+        return " > ".join(chain)
 
 class Collection(db.Model):
     id = db.Column(db.Integer, primary_key=True)

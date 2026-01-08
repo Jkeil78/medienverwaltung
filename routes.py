@@ -254,6 +254,35 @@ def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
+@main.route('/admin/locations/edit/<int:loc_id>', methods=['GET', 'POST'])
+@login_required
+def location_edit(loc_id):
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    
+    loc = Location.query.get_or_404(loc_id)
+    all_locations = Location.query.filter(Location.id != loc_id).all() # Sich selbst als Parent ausschließen
+
+    if request.method == 'POST':
+        loc.name = request.form.get('name')
+        pid = request.form.get('parent_id')
+        
+        # Validierung: Parent darf nicht man selbst sein
+        if pid and pid.strip():
+            pid = int(pid)
+            if pid == loc.id:
+                flash('Ein Standort kann nicht sein eigener übergeordneter Standort sein.', 'error')
+                return redirect(url_for('main.location_edit', loc_id=loc.id))
+            loc.parent_id = pid
+        else:
+            loc.parent_id = None
+            
+        db.session.commit()
+        flash('Standort aktualisiert.', 'success')
+        return redirect(url_for('main.admin_locations'))
+
+    return render_template('location_edit.html', location=loc, all_locations=all_locations)
+
+
 @main.route('/profile/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
