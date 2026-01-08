@@ -1,18 +1,10 @@
-version: '3.8'
-
 services:
   web:
     build: .
     ports:
       - "5000:5000"
     volumes:
-      - .:/app  # Live-Sync: Änderungen am Code werden sofort in den Container gespiegelt
-      - media_data:/app/instance # Hier landet die SQLite DB
-      - media_images:/app/static/covers # Hier landen die Bilder
-    environment:
-      - FLASK_ENV=development
-      - FLASK_DEBUG=1
-
-volumes:
-  media_data:
-  media_images:
+      # Wir mappen die Ordner auf dem Server (links) in den Container (rechts)
+      - /opt/medien_verwaltung/uploads:/app/static/uploads
+      - /opt/medien_verwaltung/medien.db:/app/medien.db
+    restart: always
