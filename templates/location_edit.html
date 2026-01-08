@@ -17,11 +17,11 @@
 
                         <div class="mb-3">
                             <label class="form-label">Übergeordneter Standort</label>
-                            <select name="parent_id" class="form-select">
-                                <option value="">-- Keiner (Hauptkategorie) --</option>
-                                {% for l in all_locations %}
-                                    <option value="{{ l.id }}" {% if location.parent_id == l.id %}selected{% endif %}>
-                                        {{ l.full_path }}
+                            <select name="parent_id" class="form-control">
+                                <option value="">-- Keine (Hauptkategorie) --</option>
+                                {% for loc in all_locations %}
+                                    <option value="{{ loc.id }}" {% if location.parent_id == loc.id %}selected{% endif %}>
+                                        {{ loc.full_path }}
                                     </option>
                                 {% endfor %}
                             </select>

@@ -36,11 +36,11 @@
                 </select>
             </div>
             <div class="col-6 col-md-auto">
-                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">Standort...</option>
+                <select name="location" class="form-select">
+                    <option value="">Alle Standorte</option>
                     {% for loc in locations %}
                         <option value="{{ loc.id }}" {% if request.args.get('location')|int == loc.id %}selected{% endif %}>
-                            {{ loc.name }}
+                            {{ loc.full_path }}
                         </option>
                     {% endfor %}
                 </select>

@@ -11,6 +11,7 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models import User, Role, Location, MediaItem, Collection, Track
 from sqlalchemy import or_
+
 main = Blueprint('main', __name__)
 
 # -- HELPER --
@@ -192,8 +193,7 @@ def qrcode_image(inventory_number):
         print(f"QR Error: {e}")
         return "Error", 500
 
-# -- RESTLICHE ROUTEN (UNVERÄNDERT) --
-# (Ich füge sie hier ein, damit copy-paste sicher funktioniert)
+# -- HAUPTROUTEN --
 
 @main.route('/')
 def index():
@@ -229,11 +229,14 @@ def index():
     # Sortierung und Ausführung
     items = query.order_by(MediaItem.created_at.desc()).all()
 
-    # Daten für Dropdowns laden
+    # Daten für Dropdowns laden und SORTIEREN nach Pfad
     locations = Location.query.all()
+    # Hier sortieren wir Python-seitig, da full_path eine Property ist
+    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+    
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
 
-    return render_template('index.html', items=items, locations=locations, categories=categories)
+    return render_template('index.html', items=items, locations=locations_sorted, categories=categories)
 
 
 @main.route('/login', methods=['GET', 'POST'])
@@ -260,7 +263,9 @@ def location_edit(loc_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     
     loc = Location.query.get_or_404(loc_id)
-    all_locations = Location.query.filter(Location.id != loc_id).all() # Sich selbst als Parent ausschließen
+    # Sich selbst als Parent ausschließen und den Rest SORTIEREN
+    possible_parents = Location.query.filter(Location.id != loc_id).all()
+    sorted_parents = sorted(possible_parents, key=lambda x: x.full_path)
 
     if request.method == 'POST':
         loc.name = request.form.get('name')
@@ -280,7 +285,7 @@ def location_edit(loc_id):
         flash('Standort aktualisiert.', 'success')
         return redirect(url_for('main.admin_locations'))
 
-    return render_template('location_edit.html', location=loc, all_locations=all_locations)
+    return render_template('location_edit.html', location=loc, all_locations=sorted_parents)
 
 
 @main.route('/profile/change_password', methods=['GET', 'POST'])
@@ -344,9 +349,12 @@ def media_create():
         flash(f'Medium "{title}" angelegt.', 'success')
         return redirect(url_for('main.index'))
 
+    # Locations laden und SORTIEREN
     locations = Location.query.all()
+    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+    
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_create.html', locations=locations, categories=categories)
+    return render_template('media_create.html', locations=locations_sorted, categories=categories)
 
 @main.route('/media/edit/<int:item_id>', methods=['GET', 'POST'])
 @login_required
@@ -384,9 +392,12 @@ def media_edit(item_id):
         flash('Gespeichert.', 'success')
         return redirect(url_for('main.media_detail', item_id=item.id))
 
+    # Locations laden und SORTIEREN
     locations = Location.query.all()
+    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_edit.html', item=item, locations=locations, categories=categories)
+    return render_template('media_edit.html', item=item, locations=locations_sorted, categories=categories)
 
 @main.route('/media/delete/<int:item_id>')
 @login_required
@@ -453,7 +464,12 @@ def user_delete(user_id):
 @login_required
 def admin_locations():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    return render_template('admin_locations.html', locations=Location.query.all())
+    
+    # Auch hier SORTIEREN für die Admin-Ansicht
+    locations = Location.query.all()
+    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+    
+    return render_template('admin_locations.html', locations=locations_sorted)
 
 @main.route('/admin/locations/create', methods=['POST'])
 @login_required

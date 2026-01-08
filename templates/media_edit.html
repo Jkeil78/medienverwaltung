@@ -60,13 +60,13 @@
 
         <div class="form-group">
             <label>Standort</label>
-            <select name="location_id">
-                {% for loc in locations %}
-                    <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>
-                        {% if loc.parent %}{{ loc.parent.name }} > {% endif %}{{ loc.name }}
-                    </option>
-                {% endfor %}
-            </select>
+           <select name="location_id" class="form-control">
+            {% for loc in locations %}
+              <option value="{{ loc.id }}" {% if item is defined and item.location_id == loc.id %}selected{% endif %}>
+                 {{ loc.full_path }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
 
         <div class="form-group">
