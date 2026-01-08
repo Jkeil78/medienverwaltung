@@ -127,6 +127,9 @@
                             <i class="bi bi-geo-alt me-2"></i> Standorte
                         </a>
                     </li>
+                   <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('main.settings') }}">Einstellungen</a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link {% if 'admin_users' in request.endpoint %}active{% endif %}" href="{{ url_for('main.admin_users') }}">
                             <i class="bi bi-people me-2"></i> Benutzer
@@ -135,6 +138,7 @@
                     {% endif %}
 
                     {% if current_user.is_authenticated %}
+
                     <li class="nav-item mt-4 pt-2 border-top border-secondary">
                         <div class="sidebar-heading">Mein Konto</div>
                     </li>

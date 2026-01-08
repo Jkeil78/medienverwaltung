@@ -35,6 +35,15 @@ class User(UserMixin, db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
+class AppSetting(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(50), unique=True, nullable=False) # z.B. 'discogs_token'
+    value = db.Column(db.String(255), nullable=True)          # z.B. 'a1b2c3...'
+
+    def __repr__(self):
+        return f'<AppSetting {self.key}>'
+
 # -- MEDIEN MODELLE --
 
 class Location(db.Model):

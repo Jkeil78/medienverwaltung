@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">System Einstellungen</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    
+                    <h5 class="mb-3">Externe APIs</h5>
+                    
+                    <div class="mb-3">
+                        <label for="discogs_token" class="form-label">Discogs Personal Access Token</label>
+                        <input type="text" class="form-control" id="discogs_token" name="discogs_token" 
+                               value="{{ discogs_token }}" placeholder="Token hier einfügen...">
+                        <div class="form-text">
+                            Benötigt, um Musik-Cover und Details von Discogs zu laden. 
+                            <a href="https://www.discogs.com/settings/developers" target="_blank">Token hier generieren</a>.
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Speichern
+                    </button>
+                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Abbrechen</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
