@@ -4,7 +4,6 @@ import requests
 import re
 import io      
 import qrcode
-import shutil
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file
 from flask_login import login_user, login_required, logout_user, current_user
@@ -19,17 +18,13 @@ main = Blueprint('main', __name__)
 # -- HELPER --
 
 def get_config_value(key, default=None):
-    """Liest eine Einstellung aus der Datenbank"""
     try:
         setting = AppSetting.query.filter_by(key=key).first()
-        if setting and setting.value:
-            return setting.value
-    except Exception:
-        pass
+        if setting and setting.value: return setting.value
+    except: pass
     return default
 
 def set_config_value(key, value):
-    """Schreibt eine Einstellung in die Datenbank"""
     setting = AppSetting.query.filter_by(key=key).first()
     if not setting:
         setting = AppSetting(key=key)
@@ -38,8 +33,7 @@ def set_config_value(key, value):
     db.session.commit()
 
 def allowed_file(filename):
-    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg', 'gif'}
 
 def save_image(file):
     if file and allowed_file(file.filename):
@@ -51,36 +45,40 @@ def save_image(file):
     return None
 
 def download_remote_image(url):
+    # Einfacher Check: Amazon liefert manchmal 1x1 Pixel Gifs als "nicht gefunden"
+    # Wir laden erst, wenn wir sicher sind, dass es Bilddaten sind.
     print(f"DEBUG: Starte Download von {url}")
     try:
-        # User-Agent ist wichtig für Discogs Bilder!
         headers = {'User-Agent': 'HomeInventoryApp/1.0'}
         response = requests.get(url, headers=headers, stream=True, timeout=10)
         
         if response.status_code == 200:
+            # Check Content-Length (Amazon 1x1 Pixel ist ca 43 bytes)
+            if len(response.content) < 100:
+                print("DEBUG: Bild zu klein (wahrscheinlich Platzhalter), verwerfe.")
+                return None
+
             ext = 'jpg'
             if 'png' in url.lower(): ext = 'png'
             new_filename = f"{uuid.uuid4().hex}.{ext}"
             path = os.path.join(current_app.config['UPLOAD_FOLDER'], new_filename)
             with open(path, 'wb') as f:
-                for chunk in response.iter_content(1024):
-                    f.write(chunk)
-            print(f"DEBUG: Download erfolgreich: {new_filename}")
+                f.write(response.content)
             return new_filename
     except Exception as e:
-        print(f"DEBUG: Exception beim Download: {e}")
+        print(f"Download Error: {e}")
     return None
 
 def create_initial_data():
-    if not Role.query.filter_by(name='Admin').first():
+    if not Role.query.first():
         db.session.add(Role(name='Admin'))
         db.session.add(Role(name='User'))
         db.session.commit()
-    if not User.query.filter_by(username='admin').first():
-        admin_role = Role.query.filter_by(name='Admin').first()
-        admin = User(username='admin', role=admin_role)
-        admin.set_password('admin123')
-        db.session.add(admin)
+    if not User.query.first():
+        r = Role.query.filter_by(name='Admin').first()
+        u = User(username='admin', role=r)
+        u.set_password('admin123')
+        db.session.add(u)
         db.session.commit()
     if not Location.query.first():
         db.session.add(Location(name="Unsortiert"))
@@ -88,291 +86,197 @@ def create_initial_data():
 
 def generate_inventory_number():
     year = datetime.now().year
-    unique_part = str(uuid.uuid4())[:8].upper()
-    return f"INV-{year}-{unique_part}"
+    unique = str(uuid.uuid4())[:8].upper()
+    return f"INV-{year}-{unique}"
 
-
-# -- API ROUTE: DISCOGS TEXT SUCHE (Königsdisziplin) --
-
+# -- API: DISCOGS TEXT SUCHE --
 @main.route('/api/search_discogs')
 @login_required
 def api_search_discogs():
     artist = request.args.get('artist', '').strip()
     title = request.args.get('title', '').strip()
     
-    if not artist or not title:
-        return jsonify({"success": False, "message": "Bitte Interpret und Titel angeben."})
-
     discogs_token = get_config_value('discogs_token')
     if not discogs_token:
-        return jsonify({"success": False, "message": "Kein Discogs-Token in den Einstellungen."})
+        return jsonify({"success": False, "message": "Kein Token."})
 
-    data = {
-        "success": False,
-        "images": [], # Liste von Bild-URLs
-        "year": "",
-        "tracks": [],
-        "category": ""
-    }
+    data = {"success": False, "images": [], "tracks": [], "year": "", "category": ""}
 
     try:
-        headers = {
-            "User-Agent": "HomeInventoryApp/1.0",
-            "Authorization": f"Discogs token={discogs_token}"
-        }
+        headers = {"User-Agent": "HomeInventoryApp/1.0", "Authorization": f"Discogs token={discogs_token}"}
         url = "https://api.discogs.com/database/search"
+        params = {"artist": artist, "release_title": title, "type": "release", "per_page": 1}
         
-        # 1. Suche nach Release
-        params = {
-            "artist": artist,
-            "release_title": title,
-            "type": "release", 
-            "per_page": 1 
-        }
-
         res = requests.get(url, headers=headers, params=params, timeout=5)
-        
-        if res.status_code == 200:
-            d_json = res.json()
-            results = d_json.get("results", [])
+        if res.status_code == 200 and res.json().get("results"):
+            item = res.json()["results"][0]
+            data["success"] = True
+            data["year"] = item.get("year", "")
             
-            if results:
-                item = results[0]
-                data["success"] = True
-                data["year"] = item.get("year", "")
-                
-                # Format (CD/Vinyl)
-                formats = item.get("format", [])
-                if "Vinyl" in formats: data["category"] = "Vinyl/LP"
-                elif "CD" in formats: data["category"] = "CD"
-                
-                # 2. Details laden (für Tracks und MEHRERE Bilder)
-                resource_url = item.get("resource_url")
-                if resource_url:
-                    det_res = requests.get(resource_url, headers=headers, timeout=5)
-                    if det_res.status_code == 200:
-                        det_data = det_res.json()
-                        
-                        # BILDER: Wir holen alle verfügbaren
-                        if "images" in det_data:
-                            for img in det_data["images"]:
-                                # uri ist das Hauptbild, uri150 das Thumbnail
-                                if "uri" in img:
-                                    data["images"].append(img["uri"])
-                        
-                        # Fallback, falls keine Images im Detail-Objekt waren
-                        if not data["images"]:
-                            thumb = item.get("cover_image") or item.get("thumb")
-                            if thumb: data["images"].append(thumb)
+            formats = item.get("format", [])
+            if "Vinyl" in formats: data["category"] = "Vinyl/LP"
+            elif "CD" in formats: data["category"] = "CD"
+            
+            resource_url = item.get("resource_url")
+            if resource_url:
+                det_res = requests.get(resource_url, headers=headers, timeout=5)
+                if det_res.status_code == 200:
+                    det = det_res.json()
+                    
+                    if "images" in det:
+                        data["images"] = [img.get("uri", "") for img in det["images"] if img.get("uri")]
+                    
+                    if not data["images"]:
+                        thumb = item.get("cover_image") or item.get("thumb")
+                        if thumb: data["images"].append(thumb)
 
-                        # TRACKS
-                        tracklist = det_data.get("tracklist", [])
-                        for t in tracklist:
-                            if t.get("type_") == "heading": continue
-                            data["tracks"].append({
-                                "position": t.get("position", ""),
-                                "title": t.get("title", ""),
-                                "duration": t.get("duration", "")
-                            })
-            else:
-                return jsonify({"success": False, "message": "Nichts gefunden bei Discogs."})
-        else:
-            return jsonify({"success": False, "message": f"Discogs API Fehler: {res.status_code}"})
-
+                    for t in det.get("tracklist", []):
+                        if t.get("type_") == "heading": continue
+                        data["tracks"].append({
+                            "position": t.get("position", ""),
+                            "title": t.get("title", ""),
+                            "duration": t.get("duration", "")
+                        })
     except Exception as e:
-        print(f"DEBUG Error: {e}")
         return jsonify({"success": False, "message": str(e)})
 
     return jsonify(data)
 
-
-# -- API ROUTE: BARCODE LOOKUP --
-
+# -- API: BARCODE LOOKUP (Mit Amazon Fallback) --
 @main.route('/api/lookup/<barcode>')
 @login_required
 def api_lookup(barcode):
-    print(f"DEBUG: API Lookup gestartet für {barcode}")
-    
-    data = {
-        "success": False,
-        "title": "",
-        "author": "",
-        "year": "",
-        "description": "",
-        "image_url": "",
-        "category": "", 
-        "tracks": []    
-    }
-    
+    data = { "success": False, "title": "", "author": "", "year": "", "description": "", "image_url": "", "category": "", "tracks": [] }
     clean_isbn = ''.join(c for c in barcode if c.isdigit() or c.upper() == 'X')
     
     # 1. Google Books
     try:
-        google_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{clean_isbn}"
-        res = requests.get(google_url, timeout=5)
+        res = requests.get(f"https://www.googleapis.com/books/v1/volumes?q=isbn:{clean_isbn}", timeout=5)
         if res.status_code == 200:
-            g_json = res.json()
-            if "items" in g_json and len(g_json["items"]) > 0:
-                info = g_json["items"][0].get("volumeInfo", {})
-                data["success"] = True
-                data["title"] = info.get("title", "")
-                data["author"] = ", ".join(info.get("authors", []))
-                data["description"] = info.get("description", "")[:800]
-                data["category"] = "Buch"
-                
-                pub_date = info.get("publishedDate", "")
-                if len(pub_date) >= 4: data["year"] = pub_date[:4]
-                
+            g = res.json()
+            if "items" in g and len(g["items"]) > 0:
+                info = g["items"][0].get("volumeInfo", {})
+                data.update({
+                    "success": True, "title": info.get("title", ""), 
+                    "author": ", ".join(info.get("authors", [])),
+                    "description": info.get("description", "")[:800], "category": "Buch",
+                    "year": info.get("publishedDate", "")[:4] if len(info.get("publishedDate", ""))>=4 else ""
+                })
                 imgs = info.get("imageLinks", {})
-                img_url = imgs.get("thumbnail") or imgs.get("smallThumbnail")
-                if img_url:
-                    if img_url.startswith("http://"): img_url = img_url.replace("http://", "https://")
-                    data["image_url"] = img_url
-    except Exception as e:
-        print(f"DEBUG: Google Error: {e}")
+                if imgs.get("thumbnail"): data["image_url"] = imgs.get("thumbnail").replace("http://", "https://")
+    except: pass
 
     # 2. Open Library
     if not data["success"] or not data["image_url"]:
         try:
-            ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{clean_isbn}&format=json&jscmd=data"
-            res = requests.get(ol_url, timeout=5)
-            if res.status_code == 200:
-                result = res.json()
-                if result:
-                    book = list(result.values())[0]
-                    if not data["success"]:
-                        data["success"] = True
-                        data["title"] = book.get("title", "")
-                        data["author"] = ", ".join([a["name"] for a in book.get("authors", [])])
-                        match = re.search(r'\d{4}', book.get("publish_date", ""))
-                        if match: data["year"] = match.group(0)
-                        data["category"] = "Buch"
+            res = requests.get(f"https://openlibrary.org/api/books?bibkeys=ISBN:{clean_isbn}&format=json&jscmd=data", timeout=5)
+            if res.status_code == 200 and res.json():
+                bk = list(res.json().values())[0]
+                if not data["success"]: # Metadaten nur übernehmen wenn Google nichts hatte
+                    data.update({
+                        "success": True, "title": bk.get("title", ""), 
+                        "author": ", ".join([a["name"] for a in bk.get("authors", [])]),
+                        "category": "Buch"
+                    })
+                    match = re.search(r'\d{4}', bk.get("publish_date", ""))
+                    if match: data["year"] = match.group(0)
 
-                    if "cover" in book:
-                        cover_url = book["cover"].get("large", "") or book["cover"].get("medium", "")
-                        if cover_url: data["image_url"] = cover_url
+                # Bild holen
+                if "cover" in bk: data["image_url"] = bk["cover"].get("large", "")
+        except: pass
+
+    # 3. Amazon Direct Image Fallback (NEU!)
+    # Funktioniert oft für deutsche Bücher, wenn Google/OpenLibrary kein Cover haben
+    if data["success"] and not data["image_url"]:
+        try:
+            # Amazon Bild-URL Muster
+            amazon_url = f"https://images-na.ssl-images-amazon.com/images/P/{clean_isbn}.01.LZZZZZZZ.jpg"
+            
+            # Wir machen einen HEAD request um zu prüfen, ob das Bild existiert
+            # und größer als 1x1 Pixel ist (Amazon liefert 43 bytes für "nicht gefunden")
+            check = requests.get(amazon_url, timeout=3)
+            if check.status_code == 200 and len(check.content) > 100:
+                print(f"DEBUG: Amazon Cover gefunden für {clean_isbn}")
+                data["image_url"] = amazon_url
         except Exception as e:
-            print(f"DEBUG: OpenLibrary Error: {e}")
+            print(f"DEBUG: Amazon Fallback Fehler: {e}")
 
-    # 3. Discogs (Barcode)
-    discogs_token = get_config_value('discogs_token')
-    
-    if discogs_token:
-        if not data["success"]: 
-            try:
-                headers = {
-                    "User-Agent": "HomeInventoryApp/1.0",
-                    "Authorization": f"Discogs token={discogs_token}"
-                }
-                discogs_url = "https://api.discogs.com/database/search"
-                params = {"barcode": barcode, "type": "release", "per_page": 1}
+    # 4. Discogs (für Musik)
+    token = get_config_value('discogs_token')
+    if token and (not data["success"] or data["category"] == ""): 
+        try:
+            h = {"User-Agent": "HomeInventoryApp/1.0", "Authorization": f"Discogs token={token}"}
+            res = requests.get("https://api.discogs.com/database/search", headers=h, params={"barcode": barcode, "type": "release", "per_page": 1}, timeout=5)
+            if res.status_code == 200 and res.json().get("results"):
+                it = res.json()["results"][0]
+                data["success"] = True
                 
-                res = requests.get(discogs_url, headers=headers, params=params, timeout=5)
+                # Titel/Autor Trennung bei Discogs oft "Artist - Title"
+                full_title = it.get("title", "")
+                if " - " in full_title and not data["author"]:
+                    parts = full_title.split(" - ", 1)
+                    data["author"] = parts[0].strip()
+                    data["title"] = parts[1].strip()
+                elif not data["title"]:
+                    data["title"] = full_title
                 
-                if res.status_code == 200:
-                    d_json = res.json()
-                    results = d_json.get("results", [])
-                    
-                    if results:
-                        item = results[0]
-                        data["success"] = True
-                        
-                        full_title = item.get("title", "")
-                        if " - " in full_title:
-                            parts = full_title.split(" - ", 1)
-                            data["author"] = parts[0].strip()
-                            data["title"] = parts[1].strip()
-                        else:
-                            data["title"] = full_title
-                            
-                        data["year"] = item.get("year", "")
-                        img_url = item.get("cover_image", "") or item.get("thumb", "")
-                        if img_url: data["image_url"] = img_url
-                        
-                        genres = item.get("genre", []) + item.get("style", [])
-                        data["description"] = "Genres: " + ", ".join(genres)
+                if not data["year"]: data["year"] = it.get("year", "")
+                
+                # Wenn wir noch kein Bild haben (oder Amazon/Google fehlschlug)
+                if not data["image_url"]:
+                    data["image_url"] = it.get("cover_image", "")
+                
+                # Kategorie ermitteln
+                fmts = it.get("format", [])
+                if "Vinyl" in fmts: data["category"] = "Vinyl/LP"
+                elif "CD" in fmts: data["category"] = "CD"
+                elif "DVD" in fmts: data["category"] = "Film (DVD/BluRay)"
 
-                        formats = item.get("format", [])
-                        if "Vinyl" in formats: data["category"] = "Vinyl/LP"
-                        elif "CD" in formats: data["category"] = "CD"
-                        elif "DVD" in formats: data["category"] = "Film (DVD/BluRay)"
-                        
-                        # Resource URL für Tracks
-                        resource_url = item.get("resource_url")
-                        if resource_url:
-                            det_res = requests.get(resource_url, headers=headers, timeout=5)
-                            if det_res.status_code == 200:
-                                det_data = det_res.json()
-                                tracklist = det_data.get("tracklist", [])
-                                for t in tracklist:
-                                    if t.get("type_") == "heading": continue
-                                    data["tracks"].append({
-                                        "position": t.get("position", ""),
-                                        "title": t.get("title", ""),
-                                        "duration": t.get("duration", "")
-                                    })
-
-            except Exception as e:
-                print(f"DEBUG: Discogs Error: {e}")
+                # Tracks laden
+                if it.get("resource_url"):
+                    det = requests.get(it["resource_url"], headers=h, timeout=5).json()
+                    for t in det.get("tracklist", []):
+                        if t.get("type_") != "heading":
+                            data["tracks"].append({"position": t.get("position"), "title": t.get("title"), "duration": t.get("duration")})
+        except: pass
 
     return jsonify(data)
 
-
-# -- QR-CODE --
+# -- QR Code --
 @main.route('/qrcode_image/<inventory_number>')
 def qrcode_image(inventory_number):
-    try:
-        qr = qrcode.QRCode(version=1, box_size=10, border=4)
-        qr.add_data(inventory_number)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="black", back_color="white")
-        fp = io.BytesIO()
-        img.save(fp, 'PNG')
-        fp.seek(0)
-        return send_file(fp, mimetype='image/png')
-    except Exception as e:
-        print(f"QR Error: {e}")
-        return "Error", 500
+    qr = qrcode.QRCode(box_size=10, border=4)
+    qr.add_data(inventory_number)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    fp = io.BytesIO()
+    img.save(fp, 'PNG')
+    fp.seek(0)
+    return send_file(fp, mimetype='image/png')
 
-# -- HAUPTROUTEN --
+# -- ROUTEN --
 
 @main.route('/')
 def index():
     if not current_user.is_authenticated: return redirect(url_for('main.login'))
-
-    search_query = request.args.get('q')
-    filter_category = request.args.get('category')
-    filter_location = request.args.get('location')
-    sort_by = request.args.get('sort', 'author')
+    q_str = request.args.get('q')
+    cat = request.args.get('category')
+    loc = request.args.get('location')
+    sort = request.args.get('sort', 'author')
 
     query = MediaItem.query
+    if q_str:
+        s = f"%{q_str}%"
+        query = query.filter(or_(MediaItem.title.ilike(s), MediaItem.author_artist.ilike(s), MediaItem.inventory_number.ilike(s), MediaItem.barcode.ilike(s)))
+    if cat: query = query.filter(MediaItem.category == cat)
+    if loc: query = query.filter(MediaItem.location_id == int(loc))
 
-    if search_query:
-        search_term = f"%{search_query}%"
-        query = query.filter(or_(
-            MediaItem.title.ilike(search_term),
-            MediaItem.author_artist.ilike(search_term),
-            MediaItem.inventory_number.ilike(search_term),
-            MediaItem.barcode.ilike(search_term)
-        ))
+    if sort == 'title': query = query.order_by(MediaItem.title.asc())
+    elif sort == 'year': query = query.order_by(MediaItem.release_year.desc())
+    elif sort == 'newest': query = query.order_by(MediaItem.created_at.desc())
+    else: query = query.order_by(MediaItem.author_artist.asc())
 
-    if filter_category: query = query.filter(MediaItem.category == filter_category)
-    if filter_location: query = query.filter(MediaItem.location_id == int(filter_location))
-
-    if sort_by == 'title':
-        query = query.order_by(MediaItem.title.asc())
-    elif sort_by == 'year':
-        query = query.order_by(MediaItem.release_year.desc())
-    elif sort_by == 'newest':
-        query = query.order_by(MediaItem.created_at.desc())
-    else: 
-        query = query.order_by(MediaItem.author_artist.asc())
-
-    items = query.all()
-    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
-    categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-
-    return render_template('index.html', items=items, locations=locations, categories=categories, current_sort=sort_by)
+    return render_template('index.html', items=query.all(), locations=sorted(Location.query.all(), key=lambda x: x.full_path), categories=["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"], current_sort=sort)
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -405,13 +309,11 @@ def settings():
 @login_required
 def change_password():
     if request.method == 'POST':
-        current = request.form.get('current_password')
+        curr = request.form.get('current_password')
         new = request.form.get('new_password')
-        confirm = request.form.get('confirm_password')
-        if not current_user.check_password(current):
-            flash('Passwort falsch.', 'error')
-        elif new != confirm:
-            flash('Passwörter ungleich.', 'error')
+        conf = request.form.get('confirm_password')
+        if not current_user.check_password(curr): flash('Passwort falsch.', 'error')
+        elif new != conf: flash('Passwörter ungleich.', 'error')
         else:
             current_user.set_password(new)
             db.session.commit()
@@ -419,10 +321,8 @@ def change_password():
             return redirect(url_for('main.index'))
     return render_template('change_password.html')
 
-
-# -- ADMIN BACKUP ROUTEN --
-
-@main.route('/admin/backup', methods=['GET'])
+# -- ADMIN BACKUP --
+@main.route('/admin/backup')
 @login_required
 def admin_backup():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
@@ -433,119 +333,84 @@ def admin_backup():
 def admin_backup_download():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     try:
-        path, filename = create_backup_zip()
-        return send_file(path, as_attachment=True, download_name=filename)
+        path, fname = create_backup_zip()
+        return send_file(path, as_attachment=True, download_name=fname)
     except Exception as e:
-        flash(f'Backup Fehler: {str(e)}', 'error')
+        flash(f'Error: {e}', 'error')
         return redirect(url_for('main.admin_backup'))
 
 @main.route('/admin/restore', methods=['POST'])
 @login_required
 def admin_restore():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    
-    file = request.files.get('backup_file')
-    if not file or file.filename == '':
-        flash('Keine Datei ausgewählt.', 'error')
-        return redirect(url_for('main.admin_backup'))
-    
-    if file and file.filename.endswith('.zip'):
-        # FIX: Ordner erstellen falls nicht vorhanden
-        if not os.path.exists(current_app.instance_path):
-            os.makedirs(current_app.instance_path)
-
-        temp_zip_path = os.path.join(current_app.instance_path, 'upload_restore.zip')
-        file.save(temp_zip_path)
-        
+    f = request.files.get('backup_file')
+    if f and f.filename.endswith('.zip'):
+        if not os.path.exists(current_app.instance_path): os.makedirs(current_app.instance_path)
+        p = os.path.join(current_app.instance_path, 'restore.zip')
+        f.save(p)
         try:
-            restore_backup_zip(temp_zip_path)
-            flash('System erfolgreich wiederhergestellt! Bitte neu einloggen.', 'success')
-            if os.path.exists(temp_zip_path): os.remove(temp_zip_path)
+            restore_backup_zip(p)
+            flash('Restore erfolgreich. Bitte neu einloggen.', 'success')
+            if os.path.exists(p): os.remove(p)
             return redirect(url_for('main.index'))
         except Exception as e:
-            flash(f'Restore Fehler: {str(e)}', 'error')
+            flash(f'Error: {e}', 'error')
             return redirect(url_for('main.admin_backup'))
-            
-    flash('Ungültiges Dateiformat. Bitte ZIP hochladen.', 'error')
+    flash('Ungültige Datei.', 'error')
     return redirect(url_for('main.admin_backup'))
 
-
-# -- MEDIA ROUTES --
-
+# -- MEDIA --
 @main.route('/media/<int:item_id>')
 @login_required
 def media_detail(item_id):
     item = MediaItem.query.get_or_404(item_id)
-    tracks = item.tracks.order_by(Track.position).all()
-    return render_template('media_detail.html', item=item, tracks=tracks)
-
+    return render_template('media_detail.html', item=item, tracks=item.tracks.order_by(Track.position).all())
 
 @main.route('/media/create', methods=['GET', 'POST'])
 @login_required
 def media_create():
     if request.method == 'POST':
-        title = request.form.get('title')
-        remote_url = request.form.get('remote_image_url')
-        filename = None
-        image_file = request.files.get('image')
+        # Bildverarbeitung
+        img = request.files.get('image')
+        url = request.form.get('remote_image_url')
+        fn = None
+        if img and img.filename:
+            fn = save_image(img)
+        elif url and url.strip():
+            fn = download_remote_image(url) # Hier greift jetzt auch die Amazon 1x1 Prüfung
         
-        if image_file and image_file.filename != '':
-            filename = save_image(image_file)
-        elif remote_url and remote_url.strip() != '':
-            filename = download_remote_image(remote_url)
-
         ry = request.form.get('release_year')
-        ry = int(ry) if ry and ry.strip() else None
-
-        new_item = MediaItem(
+        item = MediaItem(
             inventory_number=generate_inventory_number(),
-            title=title,
+            title=request.form.get('title'),
             category=request.form.get('category'),
             barcode=request.form.get('barcode') or None,
             author_artist=request.form.get('author_artist'),
-            release_year=ry,
+            release_year=int(ry) if ry else None,
             description=request.form.get('description'),
             location_id=int(request.form.get('location_id') or 1),
-            image_filename=filename,
+            image_filename=fn,
             user_id=current_user.id
         )
-        db.session.add(new_item)
+        db.session.add(item)
         db.session.commit()
 
-        # Tracks speichern
-        track_titles = request.form.getlist('track_title')
-        track_positions = request.form.getlist('track_position')
-        track_durations = request.form.getlist('track_duration')
-        
-        if track_titles:
-            for i, t_title in enumerate(track_titles):
-                if t_title.strip():
-                    pos = track_positions[i] if i < len(track_positions) else (i + 1)
-                    dur = track_durations[i] if i < len(track_durations) else ""
-                    try: pos_int = int(pos)
-                    except: pos_int = i + 1
+        # Tracks
+        titles = request.form.getlist('track_title')
+        pos = request.form.getlist('track_position')
+        dur = request.form.getlist('track_duration')
+        for i, t in enumerate(titles):
+            if t.strip():
+                try: p = int(pos[i])
+                except: p = i + 1
+                db.session.add(Track(media_item_id=item.id, title=t, position=p, duration=dur[i]))
+        db.session.commit()
 
-                    new_track = Track(
-                        media_item_id=new_item.id,
-                        title=t_title,
-                        position=pos_int,
-                        duration=dur
-                    )
-                    db.session.add(new_track)
-            db.session.commit()
+        flash('Erstellt.', 'success')
+        if request.form.get('commit_action') == 'save_next': return redirect(url_for('main.media_create'))
+        return redirect(url_for('main.index'))
 
-        flash(f'Medium "{title}" angelegt.', 'success')
-        
-        # Save & Next Logik
-        if request.form.get('commit_action') == 'save_next':
-            return redirect(url_for('main.media_create'))
-        else:
-            return redirect(url_for('main.index'))
-
-    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
-    categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_create.html', locations=locations, categories=categories)
-
+    return render_template('media_create.html', locations=sorted(Location.query.all(), key=lambda x: x.full_path), categories=["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"])
 
 @main.route('/media/edit/<int:item_id>', methods=['GET', 'POST'])
 @login_required
@@ -557,59 +422,35 @@ def media_edit(item_id):
         item.author_artist = request.form.get('author_artist')
         ry = request.form.get('release_year')
         item.release_year = int(ry) if ry and ry.strip() else None
-        item.barcode = request.form.get('barcode') or None
+        item.barcode = request.form.get('barcode')
         item.description = request.form.get('description')
         item.location_id = int(request.form.get('location_id') or 1)
-        
-        lent = request.form.get('lent_to')
-        if lent and lent.strip():
-            if not item.lent_to: item.lent_at = datetime.now()
-            item.lent_to = lent
-        else:
-            item.lent_to = None
-            item.lent_at = None
+        item.lent_to = request.form.get('lent_to') or None
+        if item.lent_to and not item.lent_at: item.lent_at = datetime.now()
+        if not item.lent_to: item.lent_at = None
 
-        image_file = request.files.get('image')
-        remote_url = request.form.get('remote_image_url')
-        new_filename = None
-        if image_file and image_file.filename != '':
-            new_filename = save_image(image_file)
-        elif remote_url and remote_url.strip() != '':
-            new_filename = download_remote_image(remote_url)
-        if new_filename:
-            item.image_filename = new_filename
+        img = request.files.get('image')
+        url = request.form.get('remote_image_url')
+        if img and img.filename: item.image_filename = save_image(img)
+        elif url and url != "": item.image_filename = download_remote_image(url)
 
-        # TRACKS ÜBERSCHREIBEN (für Discogs Import)
+        # Tracks überschreiben
         if request.form.get('overwrite_tracks') == 'yes':
-            # Alte löschen
             Track.query.filter_by(media_item_id=item.id).delete()
-            
-            # Neue aus Formular
-            t_titles = request.form.getlist('track_title')
-            t_pos = request.form.getlist('track_position')
-            t_dur = request.form.getlist('track_duration')
-            
-            for i, title in enumerate(t_titles):
-                if title.strip():
-                    pos = t_pos[i] if i < len(t_pos) else str(i+1)
-                    dur = t_dur[i] if i < len(t_dur) else ""
-                    try: p_int = int(pos)
-                    except: p_int = i + 1
-                    
-                    db.session.add(Track(
-                        media_item_id=item.id,
-                        title=title,
-                        position=p_int,
-                        duration=dur
-                    ))
+            titles = request.form.getlist('track_title')
+            pos = request.form.getlist('track_position')
+            dur = request.form.getlist('track_duration')
+            for i, t in enumerate(titles):
+                if t.strip():
+                    try: p = int(pos[i])
+                    except: p = i + 1
+                    db.session.add(Track(media_item_id=item.id, title=t, position=p, duration=dur[i]))
 
         db.session.commit()
         flash('Gespeichert.', 'success')
         return redirect(url_for('main.media_detail', item_id=item.id))
 
-    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
-    categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_edit.html', item=item, locations=locations, categories=categories)
+    return render_template('media_edit.html', item=item, locations=sorted(Location.query.all(), key=lambda x: x.full_path), categories=["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"])
 
 @main.route('/media/delete/<int:item_id>')
 @login_required
@@ -622,14 +463,11 @@ def media_delete(item_id):
 @main.route('/media/<int:item_id>/add_track', methods=['POST'])
 @login_required
 def track_add(item_id):
-    item = MediaItem.query.get_or_404(item_id)
     t = request.form.get('title')
-    p = request.form.get('position')
-    d = request.form.get('duration')
     if t:
-        db.session.add(Track(media_item_id=item.id, title=t, position=int(p) if p else 0, duration=d))
+        db.session.add(Track(media_item_id=item_id, title=t, position=request.form.get('position', 0), duration=request.form.get('duration')))
         db.session.commit()
-    return redirect(url_for('main.media_detail', item_id=item.id))
+    return redirect(url_for('main.media_detail', item_id=item_id))
 
 @main.route('/track/delete/<int:track_id>')
 @login_required
@@ -653,8 +491,7 @@ def user_create():
     if not User.query.filter_by(username=request.form.get('username')).first():
         u = User(username=request.form.get('username'), role_id=request.form.get('role_id'))
         u.set_password(request.form.get('password'))
-        db.session.add(u)
-        db.session.commit()
+        db.session.add(u); db.session.commit()
     return redirect(url_for('main.admin_users'))
 
 @main.route('/admin/users/delete/<int:user_id>')
@@ -662,40 +499,30 @@ def user_create():
 def user_delete(user_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     u = User.query.get_or_404(user_id)
-    if u.id != current_user.id:
-        db.session.delete(u)
-        db.session.commit()
+    if u.id != current_user.id: db.session.delete(u); db.session.commit()
     return redirect(url_for('main.admin_users'))
 
 @main.route('/admin/locations')
 @login_required
 def admin_locations():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
-    return render_template('admin_locations.html', locations=locations)
+    return render_template('admin_locations.html', locations=sorted(Location.query.all(), key=lambda x: x.full_path))
 
 @main.route('/admin/locations/edit/<int:loc_id>', methods=['GET', 'POST'])
 @login_required
 def location_edit(loc_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     loc = Location.query.get_or_404(loc_id)
-    possible_parents = Location.query.filter(Location.id != loc_id).all()
-    sorted_parents = sorted(possible_parents, key=lambda x: x.full_path)
     if request.method == 'POST':
         loc.name = request.form.get('name')
         pid = request.form.get('parent_id')
-        if pid and pid.strip():
-            pid = int(pid)
-            if pid == loc.id:
-                flash('Fehler: Selbstbezug.', 'error')
-                return redirect(url_for('main.location_edit', loc_id=loc.id))
-            loc.parent_id = pid
-        else:
-            loc.parent_id = None
+        if pid:
+            if int(pid) == loc.id: flash('Fehler.', 'error')
+            else: loc.parent_id = int(pid)
+        else: loc.parent_id = None
         db.session.commit()
-        flash('Standort aktualisiert.', 'success')
         return redirect(url_for('main.admin_locations'))
-    return render_template('location_edit.html', location=loc, all_locations=sorted_parents)
+    return render_template('location_edit.html', location=loc, all_locations=sorted(Location.query.filter(Location.id!=loc_id).all(), key=lambda x: x.full_path))
 
 @main.route('/admin/locations/create', methods=['POST'])
 @login_required
@@ -711,9 +538,7 @@ def location_create():
 def location_delete(loc_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     l = Location.query.get_or_404(loc_id)
-    if not l.children and l.items.count() == 0:
-        db.session.delete(l)
-        db.session.commit()
+    if not l.children and l.items.count() == 0: db.session.delete(l); db.session.commit()
     return redirect(url_for('main.admin_locations'))
 
 @main.route('/admin')
