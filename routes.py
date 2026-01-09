@@ -4,6 +4,7 @@ import requests
 import re
 import io      
 import qrcode
+import shutil
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file
 from flask_login import login_user, login_required, logout_user, current_user
@@ -52,7 +53,8 @@ def save_image(file):
 def download_remote_image(url):
     print(f"DEBUG: Starte Download von {url}")
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+        # User-Agent ist wichtig für Discogs Bilder!
+        headers = {'User-Agent': 'HomeInventoryApp/1.0'}
         response = requests.get(url, headers=headers, stream=True, timeout=10)
         
         if response.status_code == 200:
@@ -90,7 +92,101 @@ def generate_inventory_number():
     return f"INV-{year}-{unique_part}"
 
 
-# -- API ROUTE --
+# -- API ROUTE: DISCOGS TEXT SUCHE (Königsdisziplin) --
+
+@main.route('/api/search_discogs')
+@login_required
+def api_search_discogs():
+    artist = request.args.get('artist', '').strip()
+    title = request.args.get('title', '').strip()
+    
+    if not artist or not title:
+        return jsonify({"success": False, "message": "Bitte Interpret und Titel angeben."})
+
+    discogs_token = get_config_value('discogs_token')
+    if not discogs_token:
+        return jsonify({"success": False, "message": "Kein Discogs-Token in den Einstellungen."})
+
+    data = {
+        "success": False,
+        "images": [], # Liste von Bild-URLs
+        "year": "",
+        "tracks": [],
+        "category": ""
+    }
+
+    try:
+        headers = {
+            "User-Agent": "HomeInventoryApp/1.0",
+            "Authorization": f"Discogs token={discogs_token}"
+        }
+        url = "https://api.discogs.com/database/search"
+        
+        # 1. Suche nach Release
+        params = {
+            "artist": artist,
+            "release_title": title,
+            "type": "release", 
+            "per_page": 1 
+        }
+
+        res = requests.get(url, headers=headers, params=params, timeout=5)
+        
+        if res.status_code == 200:
+            d_json = res.json()
+            results = d_json.get("results", [])
+            
+            if results:
+                item = results[0]
+                data["success"] = True
+                data["year"] = item.get("year", "")
+                
+                # Format (CD/Vinyl)
+                formats = item.get("format", [])
+                if "Vinyl" in formats: data["category"] = "Vinyl/LP"
+                elif "CD" in formats: data["category"] = "CD"
+                
+                # 2. Details laden (für Tracks und MEHRERE Bilder)
+                resource_url = item.get("resource_url")
+                if resource_url:
+                    det_res = requests.get(resource_url, headers=headers, timeout=5)
+                    if det_res.status_code == 200:
+                        det_data = det_res.json()
+                        
+                        # BILDER: Wir holen alle verfügbaren
+                        if "images" in det_data:
+                            for img in det_data["images"]:
+                                # uri ist das Hauptbild, uri150 das Thumbnail
+                                if "uri" in img:
+                                    data["images"].append(img["uri"])
+                        
+                        # Fallback, falls keine Images im Detail-Objekt waren
+                        if not data["images"]:
+                            thumb = item.get("cover_image") or item.get("thumb")
+                            if thumb: data["images"].append(thumb)
+
+                        # TRACKS
+                        tracklist = det_data.get("tracklist", [])
+                        for t in tracklist:
+                            if t.get("type_") == "heading": continue
+                            data["tracks"].append({
+                                "position": t.get("position", ""),
+                                "title": t.get("title", ""),
+                                "duration": t.get("duration", "")
+                            })
+            else:
+                return jsonify({"success": False, "message": "Nichts gefunden bei Discogs."})
+        else:
+            return jsonify({"success": False, "message": f"Discogs API Fehler: {res.status_code}"})
+
+    except Exception as e:
+        print(f"DEBUG Error: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
+    return jsonify(data)
+
+
+# -- API ROUTE: BARCODE LOOKUP --
 
 @main.route('/api/lookup/<barcode>')
 @login_required
@@ -158,7 +254,7 @@ def api_lookup(barcode):
         except Exception as e:
             print(f"DEBUG: OpenLibrary Error: {e}")
 
-    # 3. Discogs
+    # 3. Discogs (Barcode)
     discogs_token = get_config_value('discogs_token')
     
     if discogs_token:
@@ -197,117 +293,27 @@ def api_lookup(barcode):
                         data["description"] = "Genres: " + ", ".join(genres)
 
                         formats = item.get("format", [])
-                        if "Vinyl" in formats:
-                            data["category"] = "Vinyl/LP"
-                        elif "CD" in formats:
-                            data["category"] = "CD"
-                        elif "DVD" in formats:
-                            data["category"] = "Film (DVD/BluRay)"
+                        if "Vinyl" in formats: data["category"] = "Vinyl/LP"
+                        elif "CD" in formats: data["category"] = "CD"
+                        elif "DVD" in formats: data["category"] = "Film (DVD/BluRay)"
                         
+                        # Resource URL für Tracks
                         resource_url = item.get("resource_url")
                         if resource_url:
                             det_res = requests.get(resource_url, headers=headers, timeout=5)
                             if det_res.status_code == 200:
                                 det_data = det_res.json()
                                 tracklist = det_data.get("tracklist", [])
-                                tracks_clean = []
                                 for t in tracklist:
                                     if t.get("type_") == "heading": continue
-                                    tracks_clean.append({
+                                    data["tracks"].append({
                                         "position": t.get("position", ""),
                                         "title": t.get("title", ""),
                                         "duration": t.get("duration", "")
                                     })
-                                data["tracks"] = tracks_clean
 
             except Exception as e:
                 print(f"DEBUG: Discogs Error: {e}")
-
-    return jsonify(data)
-
-# -- NEUE API ROUTE: DISCOGS TEXT SUCHE --
-
-@main.route('/api/search_discogs')
-@login_required
-def api_search_discogs():
-    artist = request.args.get('artist', '').strip()
-    title = request.args.get('title', '').strip()
-    
-    if not artist or not title:
-        return jsonify({"success": False, "message": "Bitte Interpret und Titel angeben."})
-
-    discogs_token = get_config_value('discogs_token')
-    if not discogs_token:
-        return jsonify({"success": False, "message": "Kein Discogs-Token in den Einstellungen."})
-
-    data = {
-        "success": False,
-        "image_url": "",
-        "year": "",
-        "tracks": [],
-        "category": ""
-    }
-
-    print(f"DEBUG: Discogs Text-Suche: {artist} - {title}")
-
-    try:
-        headers = {
-            "User-Agent": "HomeInventoryApp/1.0",
-            "Authorization": f"Discogs token={discogs_token}"
-        }
-        url = "https://api.discogs.com/database/search"
-        # Wir suchen nach 'release', um genaue Tracklisten zu bekommen
-        params = {
-            "artist": artist,
-            "release_title": title,
-            "type": "release", 
-            "per_page": 1 
-        }
-
-        res = requests.get(url, headers=headers, params=params, timeout=5)
-        
-        if res.status_code == 200:
-            d_json = res.json()
-            results = d_json.get("results", [])
-            
-            if results:
-                item = results[0]
-                data["success"] = True
-                data["year"] = item.get("year", "")
-                
-                # Cover
-                img_url = item.get("cover_image", "") or item.get("thumb", "")
-                if img_url: data["image_url"] = img_url
-                
-                # Format (CD/Vinyl)
-                formats = item.get("format", [])
-                if "Vinyl" in formats: data["category"] = "Vinyl/LP"
-                elif "CD" in formats: data["category"] = "CD"
-                
-                # Details laden für Tracks
-                resource_url = item.get("resource_url")
-                if resource_url:
-                    det_res = requests.get(resource_url, headers=headers, timeout=5)
-                    if det_res.status_code == 200:
-                        det_data = det_res.json()
-                        tracklist = det_data.get("tracklist", [])
-                        tracks_clean = []
-                        for t in tracklist:
-                            if t.get("type_") == "heading": continue
-                            tracks_clean.append({
-                                "position": t.get("position", ""),
-                                "title": t.get("title", ""),
-                                "duration": t.get("duration", "")
-                            })
-                        data["tracks"] = tracks_clean
-            else:
-                return jsonify({"success": False, "message": "Nichts gefunden bei Discogs."})
-        else:
-            return jsonify({"success": False, "message": f"Discogs API Fehler: {res.status_code}"})
-
-    except Exception as e:
-        print(f"DEBUG Error: {e}")
-        return jsonify({"success": False, "message": str(e)})
 
     return jsonify(data)
 
@@ -444,7 +450,7 @@ def admin_restore():
         return redirect(url_for('main.admin_backup'))
     
     if file and file.filename.endswith('.zip'):
-        # FIX: Sicherstellen, dass der Instance-Ordner existiert, bevor wir speichern
+        # FIX: Ordner erstellen falls nicht vorhanden
         if not os.path.exists(current_app.instance_path):
             os.makedirs(current_app.instance_path)
 
@@ -516,10 +522,8 @@ def media_create():
                 if t_title.strip():
                     pos = track_positions[i] if i < len(track_positions) else (i + 1)
                     dur = track_durations[i] if i < len(track_durations) else ""
-                    try:
-                        pos_int = int(pos)
-                    except:
-                        pos_int = i + 1
+                    try: pos_int = int(pos)
+                    except: pos_int = i + 1
 
                     new_track = Track(
                         media_item_id=new_item.id,
@@ -531,6 +535,8 @@ def media_create():
             db.session.commit()
 
         flash(f'Medium "{title}" angelegt.', 'success')
+        
+        # Save & Next Logik
         if request.form.get('commit_action') == 'save_next':
             return redirect(url_for('main.media_create'))
         else:
@@ -572,6 +578,30 @@ def media_edit(item_id):
             new_filename = download_remote_image(remote_url)
         if new_filename:
             item.image_filename = new_filename
+
+        # TRACKS ÜBERSCHREIBEN (für Discogs Import)
+        if request.form.get('overwrite_tracks') == 'yes':
+            # Alte löschen
+            Track.query.filter_by(media_item_id=item.id).delete()
+            
+            # Neue aus Formular
+            t_titles = request.form.getlist('track_title')
+            t_pos = request.form.getlist('track_position')
+            t_dur = request.form.getlist('track_duration')
+            
+            for i, title in enumerate(t_titles):
+                if title.strip():
+                    pos = t_pos[i] if i < len(t_pos) else str(i+1)
+                    dur = t_dur[i] if i < len(t_dur) else ""
+                    try: p_int = int(pos)
+                    except: p_int = i + 1
+                    
+                    db.session.add(Track(
+                        media_item_id=item.id,
+                        title=title,
+                        position=p_int,
+                        duration=dur
+                    ))
 
         db.session.commit()
         flash('Gespeichert.', 'success')
