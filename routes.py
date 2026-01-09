@@ -103,8 +103,8 @@ def api_lookup(barcode):
         "year": "",
         "description": "",
         "image_url": "",
-        "category": "", # NEU: Vorgeschlagene Kategorie
-        "tracks": []    # NEU: Liste der Tracks
+        "category": "", 
+        "tracks": []    
     }
     
     clean_isbn = ''.join(c for c in barcode if c.isdigit() or c.upper() == 'X')
@@ -121,7 +121,7 @@ def api_lookup(barcode):
                 data["title"] = info.get("title", "")
                 data["author"] = ", ".join(info.get("authors", []))
                 data["description"] = info.get("description", "")[:800]
-                data["category"] = "Buch" # Google Books ist meist Buch
+                data["category"] = "Buch"
                 
                 pub_date = info.get("publishedDate", "")
                 if len(pub_date) >= 4: data["year"] = pub_date[:4]
@@ -160,10 +160,7 @@ def api_lookup(barcode):
     # 3. Discogs (Erweitert)
     discogs_token = get_config_value('discogs_token')
     
-    # Wenn wir noch keine perfekten Daten haben oder explizit Discogs-Daten wollen
     if discogs_token:
-        # Checken ob bisher nur Buch gefunden wurde, aber eigentlich Musik gesucht wird? 
-        # Einfachheitshalber: Wenn nicht success ODER wenn wir explizit erweitern wollen
         if not data["success"]: 
             try:
                 headers = {
@@ -183,7 +180,6 @@ def api_lookup(barcode):
                         item = results[0]
                         data["success"] = True
                         
-                        # Titel / Autor
                         full_title = item.get("title", "")
                         if " - " in full_title:
                             parts = full_title.split(" - ", 1)
@@ -199,9 +195,7 @@ def api_lookup(barcode):
                         genres = item.get("genre", []) + item.get("style", [])
                         data["description"] = "Genres: " + ", ".join(genres)
 
-                        # A) Format-Erkennung
                         formats = item.get("format", [])
-                        # Discogs liefert z.B. ["Vinyl", "LP", "Album"]
                         if "Vinyl" in formats:
                             data["category"] = "Vinyl/LP"
                         elif "CD" in formats:
@@ -209,19 +203,15 @@ def api_lookup(barcode):
                         elif "DVD" in formats:
                             data["category"] = "Film (DVD/BluRay)"
                         
-                        # B) Tracklist laden (Detail-Call)
                         resource_url = item.get("resource_url")
                         if resource_url:
-                            # Wir müssen den Token auch hier mitsenden
                             det_res = requests.get(resource_url, headers=headers, timeout=5)
                             if det_res.status_code == 200:
                                 det_data = det_res.json()
                                 tracklist = det_data.get("tracklist", [])
                                 tracks_clean = []
                                 for t in tracklist:
-                                    # Überspringen von Headern/Index tracks wenn nötig
                                     if t.get("type_") == "heading": continue
-                                    
                                     tracks_clean.append({
                                         "position": t.get("position", ""),
                                         "title": t.get("title", ""),
@@ -308,8 +298,28 @@ def settings():
         return redirect(url_for('main.settings'))
     return render_template('settings.html', discogs_token=get_config_value('discogs_token', ''))
 
+# -- CHANGE PASSWORD (WIEDER EINGEFÜGT) --
 
-# -- MEDIA CREATE (ERWEITERT UM TRACK-SPEICHERUNG) --
+@main.route('/profile/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        current = request.form.get('current_password')
+        new = request.form.get('new_password')
+        confirm = request.form.get('confirm_password')
+        if not current_user.check_password(current):
+            flash('Passwort falsch.', 'error')
+        elif new != confirm:
+            flash('Passwörter ungleich.', 'error')
+        else:
+            current_user.set_password(new)
+            db.session.commit()
+            flash('Gespeichert.', 'success')
+            return redirect(url_for('main.index'))
+    return render_template('change_password.html')
+
+
+# -- MEDIA CREATE (MIT TRACK-SPEICHERUNG) --
 
 @main.route('/media/create', methods=['GET', 'POST'])
 @login_required
@@ -341,12 +351,9 @@ def media_create():
             user_id=current_user.id
         )
         db.session.add(new_item)
-        
-        # WICHTIG: Erst committen, damit new_item eine ID bekommt (für die Tracks)
         db.session.commit()
 
-        # Tracks speichern (aus Formular-Listen)
-        # HTML muss inputs haben: name="track_title" und name="track_duration" etc.
+        # Tracks speichern
         track_titles = request.form.getlist('track_title')
         track_positions = request.form.getlist('track_position')
         track_durations = request.form.getlist('track_duration')
@@ -356,12 +363,6 @@ def media_create():
                 if t_title.strip():
                     pos = track_positions[i] if i < len(track_positions) else (i + 1)
                     dur = track_durations[i] if i < len(track_durations) else ""
-                    # Position bereinigen (falls String "A1" o.ä. kommt, hier vereinfacht als int oder 0 gespeichert)
-                    # Da Track.position in models.py ein Integer ist, versuchen wir es zu wandeln. 
-                    # Discogs hat oft "A1", "B2". Das passt nicht in INT.
-                    # TODO: Track.position in models.py idealerweise auf String ändern oder hier Logik anpassen.
-                    # Wir nehmen hier einfach den Loop-Index + 1 als Fallback für die Sortierung.
-                    
                     try:
                         pos_int = int(pos)
                     except:
