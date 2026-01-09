@@ -89,7 +89,7 @@ def generate_inventory_number():
     return f"INV-{year}-{unique_part}"
 
 
-# -- API ROUTE (ERWEITERT FÜR FORMAT & TRACKS) --
+# -- API ROUTE --
 
 @main.route('/api/lookup/<barcode>')
 @login_required
@@ -157,7 +157,7 @@ def api_lookup(barcode):
         except Exception as e:
             print(f"DEBUG: OpenLibrary Error: {e}")
 
-    # 3. Discogs (Erweitert)
+    # 3. Discogs
     discogs_token = get_config_value('discogs_token')
     
     if discogs_token:
@@ -298,8 +298,6 @@ def settings():
         return redirect(url_for('main.settings'))
     return render_template('settings.html', discogs_token=get_config_value('discogs_token', ''))
 
-# -- CHANGE PASSWORD (WIEDER EINGEFÜGT) --
-
 @main.route('/profile/change_password', methods=['GET', 'POST'])
 @login_required
 def change_password():
@@ -319,7 +317,15 @@ def change_password():
     return render_template('change_password.html')
 
 
-# -- MEDIA CREATE (MIT TRACK-SPEICHERUNG) --
+# -- MEDIA ROUTES --
+
+@main.route('/media/<int:item_id>')
+@login_required
+def media_detail(item_id):
+    item = MediaItem.query.get_or_404(item_id)
+    tracks = item.tracks.order_by(Track.position).all()
+    return render_template('media_detail.html', item=item, tracks=tracks)
+
 
 @main.route('/media/create', methods=['GET', 'POST'])
 @login_required
