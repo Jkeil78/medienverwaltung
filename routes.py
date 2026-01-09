@@ -187,9 +187,10 @@ def api_search_discogs():
 def api_spotify_search():
     artist = request.args.get('artist', '').strip()
     title = request.args.get('title', '').strip()
+    barcode = request.args.get('barcode', '').strip()
     
-    if not artist or not title:
-        return jsonify({"success": False, "message": "Missing artist or title"})
+    if (not artist or not title) and not barcode:
+        return jsonify({"success": False, "message": "Missing search criteria"})
         
     token = get_spotify_access_token()
     if not token:
@@ -197,15 +198,28 @@ def api_spotify_search():
         
     try:
         headers = {"Authorization": f"Bearer {token}"}
-        q = f"artist:{artist} album:{title}"
-        # Search for album
-        res = requests.get("https://api.spotify.com/v1/search", headers=headers, params={"q": q, "type": "album", "limit": 1}, timeout=5)
         
-        if res.status_code == 200:
-            data = res.json()
-            items = data.get("albums", {}).get("items", [])
-            if items:
-                return jsonify({"success": True, "spotify_id": items[0].get("id")})
+        # 1. Suche via Barcode (UPC/EAN) - sehr präzise
+        if barcode:
+            clean_code = ''.join(c for c in barcode if c.isdigit())
+            # Wir testen UPC und EAN Prefix
+            for prefix in ['upc', 'ean']:
+                q = f"{prefix}:{clean_code}"
+                res = requests.get("https://api.spotify.com/v1/search", headers=headers, params={"q": q, "type": "album", "limit": 1}, timeout=5)
+                if res.status_code == 200:
+                    items = res.json().get("albums", {}).get("items", [])
+                    if items:
+                        return jsonify({"success": True, "spotify_id": items[0].get("id")})
+
+        # 2. Fallback: Textsuche
+        if artist and title:
+            q = f"artist:{artist} album:{title}"
+            res = requests.get("https://api.spotify.com/v1/search", headers=headers, params={"q": q, "type": "album", "limit": 1}, timeout=5)
+            if res.status_code == 200:
+                items = res.json().get("albums", {}).get("items", [])
+                if items:
+                    return jsonify({"success": True, "spotify_id": items[0].get("id")})
+
     except Exception as e:
         print(f"Spotify Search Error: {e}")
         
