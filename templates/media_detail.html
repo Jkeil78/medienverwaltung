@@ -131,6 +131,13 @@
                     </div>
                     {% endif %}
 
+                    {% if spotify_enabled and item.category in ['CD', 'Vinyl/LP'] %}
+                    <div id="spotify-container" class="mt-4" style="display:none;">
+                        <h5 class="h6 fw-bold mb-2"><i class="bi bi-spotify"></i> Spotify</h5>
+                        <div id="spotify-embed"></div>
+                    </div>
+                    {% endif %}
+
                     {% if item.category in ['CD', 'Vinyl/LP'] %}
                         <hr class="mt-5 border-secondary">
                         <div class="d-flex align-items-center mb-3">
@@ -201,4 +208,24 @@
         </div>
     </div>
 </div>
+
+{% if spotify_enabled and item.category in ['CD', 'Vinyl/LP'] %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const artist = {{ item.author_artist|tojson }};
+    const title = {{ item.title|tojson }};
+    
+    if(artist && title) {
+        fetch(`/api/spotify/search?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`)
+        .then(r => r.json())
+        .then(d => {
+            if(d.success && d.spotify_id) {
+                document.getElementById('spotify-embed').innerHTML = `<iframe style="border-radius:12px" src="https://open.spotify.com/embed/album/${d.spotify_id}?utm_source=generator" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+                document.getElementById('spotify-container').style.display = 'block';
+            }
+        });
+    }
+});
+</script>
+{% endif %}
 {% endblock %}

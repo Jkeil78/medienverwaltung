@@ -4,6 +4,8 @@ import requests
 import re
 import io      
 import qrcode
+import base64
+import time
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file, session
 from flask_login import login_user, login_required, logout_user, current_user
@@ -67,6 +69,43 @@ def download_remote_image(url):
             return new_filename
     except Exception as e:
         print(f"Download Error: {e}")
+    return None
+
+def get_spotify_access_token():
+    client_id = get_config_value('spotify_client_id')
+    client_secret = get_config_value('spotify_client_secret')
+    
+    if not client_id or not client_secret:
+        return None
+
+    # Check if we have a valid token
+    token = get_config_value('spotify_access_token')
+    expiry = get_config_value('spotify_token_expiry')
+    
+    if token and expiry:
+        try:
+            # Check if token is still valid (with 60s buffer)
+            if float(expiry) > time.time():
+                return token
+        except: pass
+    
+    # Request new token
+    try:
+        auth_str = f"{client_id}:{client_secret}"
+        b64_auth = base64.b64encode(auth_str.encode()).decode()
+        headers = {'Authorization': f'Basic {b64_auth}'}
+        data = {'grant_type': 'client_credentials'}
+        
+        res = requests.post('https://accounts.spotify.com/api/token', headers=headers, data=data, timeout=5)
+        if res.status_code == 200:
+            js = res.json()
+            new_token = js.get('access_token')
+            expires_in = js.get('expires_in', 3600)
+            set_config_value('spotify_access_token', new_token)
+            set_config_value('spotify_token_expiry', str(time.time() + expires_in - 60))
+            return new_token
+    except Exception as e:
+        print(f"Spotify Auth Error: {e}")
     return None
 
 def create_initial_data():
@@ -141,6 +180,36 @@ def api_search_discogs():
         return jsonify({"success": False, "message": str(e)})
 
     return jsonify(data)
+
+# -- API: SPOTIFY SUCHE --
+@main.route('/api/spotify/search')
+@login_required
+def api_spotify_search():
+    artist = request.args.get('artist', '').strip()
+    title = request.args.get('title', '').strip()
+    
+    if not artist or not title:
+        return jsonify({"success": False, "message": "Missing artist or title"})
+        
+    token = get_spotify_access_token()
+    if not token:
+        return jsonify({"success": False, "message": "Spotify not configured or auth failed"})
+        
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        q = f"artist:{artist} album:{title}"
+        # Search for album
+        res = requests.get("https://api.spotify.com/v1/search", headers=headers, params={"q": q, "type": "album", "limit": 1}, timeout=5)
+        
+        if res.status_code == 200:
+            data = res.json()
+            items = data.get("albums", {}).get("items", [])
+            if items:
+                return jsonify({"success": True, "spotify_id": items[0].get("id")})
+    except Exception as e:
+        print(f"Spotify Search Error: {e}")
+        
+    return jsonify({"success": False, "message": "Not found"})
 
 # -- API: BARCODE LOOKUP (Mit Amazon Fallback) --
 @main.route('/api/lookup/<barcode>')
@@ -398,9 +467,14 @@ def settings():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     if request.method == 'POST':
         set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
+        set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
+        set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
         flash('Einstellungen gespeichert.', 'success')
         return redirect(url_for('main.settings'))
-    return render_template('settings.html', discogs_token=get_config_value('discogs_token', ''))
+    return render_template('settings.html', 
+                           discogs_token=get_config_value('discogs_token', ''),
+                           spotify_client_id=get_config_value('spotify_client_id', ''),
+                           spotify_client_secret=get_config_value('spotify_client_secret', ''))
 
 @main.route('/profile/change_password', methods=['GET', 'POST'])
 @login_required
@@ -461,7 +535,8 @@ def admin_restore():
 @login_required
 def media_detail(item_id):
     item = MediaItem.query.get_or_404(item_id)
-    return render_template('media_detail.html', item=item, tracks=item.tracks.order_by(Track.position).all())
+    spotify_enabled = bool(get_config_value('spotify_client_id'))
+    return render_template('media_detail.html', item=item, tracks=item.tracks.order_by(Track.position).all(), spotify_enabled=spotify_enabled)
 
 @main.route('/media/create', methods=['GET', 'POST'])
 @login_required
