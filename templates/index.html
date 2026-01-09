@@ -20,15 +20,15 @@
         <form action="{{ url_for('main.index') }}" method="GET">
             
             <div class="row g-2 mb-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
                         <input type="text" name="q" class="form-control border-start-0 bg-light" 
-                               placeholder="Suche (Titel, ISBN, Verliehen an...)" value="{{ filters.q }}">
+                               placeholder="Suche..." value="{{ filters.q }}">
                     </div>
                 </div>
 
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <select name="category" class="form-select bg-light" onchange="this.form.submit()">
                         <option value="">Alle Kategorien</option>
                         {% for cat in categories %}
@@ -51,6 +51,15 @@
                         <option value="" {% if filters.lent == '' %}selected{% endif %}>Alle Status</option>
                         <option value="no" {% if filters.lent == 'no' %}selected{% endif %}>✅ Verfügbar</option>
                         <option value="yes" {% if filters.lent == 'yes' %}selected{% endif %}>🔴 Verliehen</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <select name="limit" class="form-select bg-light" onchange="this.form.submit()" title="Anzahl pro Seite">
+                        <option value="20" {% if filters.limit == '20' or not filters.limit %}selected{% endif %}>20 Einträge</option>
+                        <option value="50" {% if filters.limit == '50' %}selected{% endif %}>50 Einträge</option>
+                        <option value="100" {% if filters.limit == '100' %}selected{% endif %}>100 Einträge</option>
+                        <option value="all" {% if filters.limit == 'all' %}selected{% endif %}>Alle anzeigen</option>
                     </select>
                 </div>
             </div>
@@ -80,7 +89,7 @@
 
                 <div class="col d-flex justify-content-end gap-2">
                     <button class="btn btn-primary btn-sm px-3" type="submit">
-                        <i class="bi bi-funnel-fill me-1"></i>Filter anwenden
+                        <i class="bi bi-funnel-fill me-1"></i>Anwenden
                     </button>
                     
                     {% if filter_active %}
@@ -135,7 +144,7 @@
                             </td>
                             <td class="d-none d-md-table-cell"><span class="badge bg-light text-dark border">{{ item.category }}</span></td>
                             <td class="d-none d-lg-table-cell">
-                                {% if item.location %}{{ item.location.name }}{% endif %}
+                                {% if item.location %}{{ item.location.full_path }}{% endif %}
                             </td>
                             <td class="text-end">
                                 {% if item.lent_to %}
@@ -152,7 +161,7 @@
     </div>
 
     <div id="view-grid" style="display: none;">
-        <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xl-5 g-3">
+        <div class="row row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6 row-cols-xxl-7 g-3">
             {% for item in items %}
             <div class="col">
                 <div class="card h-100 shadow-sm border-0 position-relative">

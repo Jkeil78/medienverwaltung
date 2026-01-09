@@ -266,8 +266,8 @@ def index():
         return redirect(url_for('main.index'))
 
     # 2. SESSION STATE MANAGEMENT
-    # Neue Parameter-Liste für maximale Flexibilität
-    params = ['q', 'category', 'location', 'lent', 'sort_field', 'sort_order']
+    # 'limit' auch speichern
+    params = ['q', 'category', 'location', 'lent', 'sort_field', 'sort_order', 'limit']
     
     # Prüfen, ob neue Parameter in der URL sind
     active_args = {k: request.args.get(k) for k in params if request.args.get(k) is not None}
@@ -284,6 +284,10 @@ def index():
     cat = request.args.get('category', '')
     loc = request.args.get('location', '')
     lent = request.args.get('lent', '') # ''=Alle, 'yes'=Verliehen, 'no'=Verfügbar
+    limit = request.args.get('limit', '20')
+    
+    # Seite auslesen (nicht in Session speichern, da man sonst immer auf Seite X landet)
+    page = request.args.get('page', 1, type=int)
     
     sort_field = request.args.get('sort_field', 'added') # default: Hinzugefügt
     sort_order = request.args.get('sort_order', 'desc')  # default: Absteigend
@@ -307,16 +311,15 @@ def index():
     if loc: 
         query = query.filter(MediaItem.location_id == int(loc))
 
-    # NEU: Verleih-Status Filter
+    # Verleih-Status Filter
     if lent == 'yes':
         query = query.filter(MediaItem.lent_to != None)
     elif lent == 'no':
         query = query.filter(MediaItem.lent_to == None)
 
     # -- FLEXIBLE SORTIERUNG MIT KASKADIERUNG --
-    # Wir bestimmen das Haupt-Sortierfeld
     primary_sort = None
-    secondary_sorts = [] # Fallback-Sortierungen für gleiche Werte
+    secondary_sorts = []
 
     if sort_field == 'title':
         primary_sort = MediaItem.title
@@ -337,25 +340,40 @@ def index():
     else:
         query = query.order_by(primary_sort.desc(), *secondary_sorts)
 
-    # Daten holen
-    items = query.all()
+    # -- PAGINATION LOGIC --
+    items = []
+    pagination = None
+    
+    if limit == 'all':
+        items = query.all()
+    else:
+        try:
+            per_page = int(limit)
+        except ValueError:
+            per_page = 20
+        
+        # SQLAlchemy Pagination nutzen
+        pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+        items = pagination.items
+
     locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
 
     # Filter-Status für Template
     current_filters = {
         'q': q_str, 'category': cat, 'location': loc, 'lent': lent,
-        'sort_field': sort_field, 'sort_order': sort_order
+        'sort_field': sort_field, 'sort_order': sort_order, 'limit': limit
     }
     # Helper: Checken ob Filter aktiv sind (für den Reset Button)
-    filter_active = any(x for x in [q_str, cat, loc, lent] if x) or sort_field != 'added'
+    filter_active = any(x for x in [q_str, cat, loc, lent] if x) or sort_field != 'added' or limit != '20'
 
     return render_template('index.html', 
                            items=items, 
                            locations=locations, 
                            categories=categories, 
                            filters=current_filters,
-                           filter_active=filter_active)
+                           filter_active=filter_active,
+                           pagination=pagination) # Pagination Objekt übergeben
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
