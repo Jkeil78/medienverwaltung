@@ -14,59 +14,87 @@
     </div>
 </div>
 
-<div class="card mb-4 shadow-sm">
-    <div class="card-body py-3">
-        <form method="GET" class="row g-2 align-items-center" action="{{ url_for('main.index') }}">
-            <div class="col-12 col-md-3 mb-2 mb-md-0">
-                 <div class="input-group">
-                    <input type="text" name="q" class="form-control" placeholder="Suche..." value="{{ request.args.get('q', '') }}">
-                    <button class="btn btn-outline-secondary" type="submit">
-                        <i class="bi bi-search"></i>
+<div class="card mb-4 shadow-sm border-0">
+    <div class="card-body bg-white rounded">
+        {% if current_user.is_authenticated %}
+        <form action="{{ url_for('main.index') }}" method="GET">
+            
+            <div class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q" class="form-control border-start-0 bg-light" 
+                               placeholder="Suche (Titel, ISBN, Verliehen an...)" value="{{ filters.q }}">
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <select name="category" class="form-select bg-light" onchange="this.form.submit()">
+                        <option value="">Alle Kategorien</option>
+                        {% for cat in categories %}
+                            <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ cat }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <select name="location" class="form-select bg-light" onchange="this.form.submit()">
+                        <option value="">Alle Standorte</option>
+                        {% for loc in locations %}
+                            <option value="{{ loc.id }}" {% if filters.location|int == loc.id %}selected{% endif %}>{{ loc.full_path }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <select name="lent" class="form-select bg-light" onchange="this.form.submit()">
+                        <option value="" {% if filters.lent == '' %}selected{% endif %}>Alle Status</option>
+                        <option value="no" {% if filters.lent == 'no' %}selected{% endif %}>✅ Verfügbar</option>
+                        <option value="yes" {% if filters.lent == 'yes' %}selected{% endif %}>🔴 Verliehen</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row g-2 align-items-center bg-light p-2 rounded mx-0">
+                
+                <div class="col-auto d-flex align-items-center">
+                    <i class="bi bi-arrow-down-up text-muted me-2"></i>
+                    <small class="fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">Sortierung:</small>
+                </div>
+
+                <div class="col-auto">
+                    <select name="sort_field" class="form-select form-select-sm border-0 bg-white" onchange="this.form.submit()">
+                        <option value="added" {% if filters.sort_field == 'added' %}selected{% endif %}>Hinzugefügt</option>
+                        <option value="title" {% if filters.sort_field == 'title' %}selected{% endif %}>Titel</option>
+                        <option value="author" {% if filters.sort_field == 'author' %}selected{% endif %}>Autor / Artist</option>
+                        <option value="year" {% if filters.sort_field == 'year' %}selected{% endif %}>Jahr</option>
+                    </select>
+                </div>
+
+                <div class="col-auto">
+                    <select name="sort_order" class="form-select form-select-sm border-0 bg-white" onchange="this.form.submit()">
+                        <option value="asc" {% if filters.sort_order == 'asc' %}selected{% endif %}>Aufsteigend (A-Z)</option>
+                        <option value="desc" {% if filters.sort_order == 'desc' %}selected{% endif %}>Absteigend (Z-A)</option>
+                    </select>
+                </div>
+
+                <div class="col d-flex justify-content-end gap-2">
+                    <button class="btn btn-primary btn-sm px-3" type="submit">
+                        <i class="bi bi-funnel-fill me-1"></i>Filter anwenden
                     </button>
-                 </div>
+                    
+                    {% if filter_active %}
+                        <a href="{{ url_for('main.index', reset=1) }}" class="btn btn-outline-secondary btn-sm" title="Filter zurücksetzen">
+                            <i class="bi bi-x-lg me-1"></i>Reset
+                        </a>
+                    {% endif %}
+                </div>
             </div>
 
-            <div class="col-12 col-md-auto">
-                <span class="fw-bold text-muted small text-uppercase"><i class="bi bi-funnel"></i> Filter & Sort:</span>
-            </div>
-
-            <div class="col-6 col-md-auto">
-                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">Alle Kategorien</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="col-6 col-md-auto">
-                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">Alle Standorte</option>
-                    {% for loc in locations %}
-                        <option value="{{ loc.id }}" {% if request.args.get('location')|int == loc.id %}selected{% endif %}>
-                            {{ loc.full_path }}
-                        </option>
-                    {% endfor %}
-                </select>
-            </div>
-            
-            <div class="col-12 col-md-auto">
-                <select name="sort" class="form-select form-select-sm bg-light" onchange="this.form.submit()" title="Sortierung">
-                    <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Nach Autor (A-Z)</option>
-                    <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Nach Titel (A-Z)</option>
-                    <option value="year" {% if current_sort == 'year' %}selected{% endif %}>Nach Jahr (Neu-Alt)</option>
-                    <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Zuletzt hinzugefügt</option>
-                </select>
-            </div>
-            
-            {% if request.args.get('q') or request.args.get('category') or request.args.get('location') or request.args.get('sort') != 'author' %}
-            <div class="col-12 col-md-auto ms-auto">
-                <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-x-circle"></i> Reset
-                </a>
-            </div>
-            {% endif %}
         </form>
+        {% else %}
+            <div class="text-center text-muted">Bitte einloggen.</div>
+        {% endif %}
     </div>
 </div>
 
@@ -111,7 +139,7 @@
                             </td>
                             <td class="text-end">
                                 {% if item.lent_to %}
-                                    <i class="bi bi-circle-fill text-warning small me-2" title="Verliehen"></i>
+                                    <i class="bi bi-circle-fill text-warning small me-2" title="Verliehen an {{ item.lent_to }}"></i>
                                 {% endif %}
                                 <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="btn btn-sm btn-light text-primary"><i class="bi bi-chevron-right"></i></a>
                             </td>

@@ -259,24 +259,103 @@ def qrcode_image(inventory_number):
 @main.route('/')
 def index():
     if not current_user.is_authenticated: return redirect(url_for('main.login'))
-    q_str = request.args.get('q')
-    cat = request.args.get('category')
-    loc = request.args.get('location')
-    sort = request.args.get('sort', 'author')
+
+    # 1. RESET
+    if request.args.get('reset'):
+        session.pop('filter_state', None)
+        return redirect(url_for('main.index'))
+
+    # 2. SESSION STATE MANAGEMENT
+    # Neue Parameter-Liste für maximale Flexibilität
+    params = ['q', 'category', 'location', 'lent', 'sort_field', 'sort_order']
+    
+    # Prüfen, ob neue Parameter in der URL sind
+    active_args = {k: request.args.get(k) for k in params if request.args.get(k) is not None}
+
+    if active_args:
+        # Neuer Filter aktiv -> Speichern
+        session['filter_state'] = active_args
+    elif 'filter_state' in session and not request.args:
+        # Keine URL-Params, aber Session vorhanden -> Restore
+        return redirect(url_for('main.index', **session['filter_state']))
+
+    # 3. WERTE AUSLESEN (Defaults setzen)
+    q_str = request.args.get('q', '')
+    cat = request.args.get('category', '')
+    loc = request.args.get('location', '')
+    lent = request.args.get('lent', '') # ''=Alle, 'yes'=Verliehen, 'no'=Verfügbar
+    
+    sort_field = request.args.get('sort_field', 'added') # default: Hinzugefügt
+    sort_order = request.args.get('sort_order', 'desc')  # default: Absteigend
 
     query = MediaItem.query
+
+    # -- FILTERING --
     if q_str:
         s = f"%{q_str}%"
-        query = query.filter(or_(MediaItem.title.ilike(s), MediaItem.author_artist.ilike(s), MediaItem.inventory_number.ilike(s), MediaItem.barcode.ilike(s)))
-    if cat: query = query.filter(MediaItem.category == cat)
-    if loc: query = query.filter(MediaItem.location_id == int(loc))
+        query = query.filter(or_(
+            MediaItem.title.ilike(s),
+            MediaItem.author_artist.ilike(s),
+            MediaItem.inventory_number.ilike(s),
+            MediaItem.barcode.ilike(s),
+            MediaItem.lent_to.ilike(s) # Auch nach Entleiher suchen!
+        ))
+    
+    if cat: 
+        query = query.filter(MediaItem.category == cat)
+    
+    if loc: 
+        query = query.filter(MediaItem.location_id == int(loc))
 
-    if sort == 'title': query = query.order_by(MediaItem.title.asc())
-    elif sort == 'year': query = query.order_by(MediaItem.release_year.desc())
-    elif sort == 'newest': query = query.order_by(MediaItem.created_at.desc())
-    else: query = query.order_by(MediaItem.author_artist.asc())
+    # NEU: Verleih-Status Filter
+    if lent == 'yes':
+        query = query.filter(MediaItem.lent_to != None)
+    elif lent == 'no':
+        query = query.filter(MediaItem.lent_to == None)
 
-    return render_template('index.html', items=query.all(), locations=sorted(Location.query.all(), key=lambda x: x.full_path), categories=["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"], current_sort=sort)
+    # -- FLEXIBLE SORTIERUNG MIT KASKADIERUNG --
+    # Wir bestimmen das Haupt-Sortierfeld
+    primary_sort = None
+    secondary_sorts = [] # Fallback-Sortierungen für gleiche Werte
+
+    if sort_field == 'title':
+        primary_sort = MediaItem.title
+        secondary_sorts = [MediaItem.author_artist.asc()] 
+    elif sort_field == 'author':
+        primary_sort = MediaItem.author_artist
+        secondary_sorts = [MediaItem.release_year.desc(), MediaItem.title.asc()]
+    elif sort_field == 'year':
+        primary_sort = MediaItem.release_year
+        secondary_sorts = [MediaItem.author_artist.asc(), MediaItem.title.asc()]
+    else: # 'added' oder Fallback
+        primary_sort = MediaItem.id
+        secondary_sorts = []
+
+    # Richtung anwenden
+    if sort_order == 'asc':
+        query = query.order_by(primary_sort.asc(), *secondary_sorts)
+    else:
+        query = query.order_by(primary_sort.desc(), *secondary_sorts)
+
+    # Daten holen
+    items = query.all()
+    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
+    categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
+
+    # Filter-Status für Template
+    current_filters = {
+        'q': q_str, 'category': cat, 'location': loc, 'lent': lent,
+        'sort_field': sort_field, 'sort_order': sort_order
+    }
+    # Helper: Checken ob Filter aktiv sind (für den Reset Button)
+    filter_active = any(x for x in [q_str, cat, loc, lent] if x) or sort_field != 'added'
+
+    return render_template('index.html', 
+                           items=items, 
+                           locations=locations, 
+                           categories=categories, 
+                           filters=current_filters,
+                           filter_active=filter_active)
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
