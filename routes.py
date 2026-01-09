@@ -11,6 +11,8 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models import User, Role, Location, MediaItem, Collection, Track, AppSetting
 from sqlalchemy import or_
+# NEU: Import der Backup Utils
+from backup_utils import create_backup_zip, restore_backup_zip
 
 main = Blueprint('main', __name__)
 
@@ -247,15 +249,13 @@ def qrcode_image(inventory_number):
 def index():
     if not current_user.is_authenticated: return redirect(url_for('main.login'))
 
-    # Parameter aus URL holen
     search_query = request.args.get('q')
     filter_category = request.args.get('category')
     filter_location = request.args.get('location')
-    sort_by = request.args.get('sort', 'author') # Default: Author
+    sort_by = request.args.get('sort', 'author')
 
     query = MediaItem.query
 
-    # 1. Filter
     if search_query:
         search_term = f"%{search_query}%"
         query = query.filter(or_(
@@ -268,15 +268,13 @@ def index():
     if filter_category: query = query.filter(MediaItem.category == filter_category)
     if filter_location: query = query.filter(MediaItem.location_id == int(filter_location))
 
-    # 2. Sortierung
     if sort_by == 'title':
         query = query.order_by(MediaItem.title.asc())
     elif sort_by == 'year':
-        # Nulls last wäre schöner, aber SQLite/SQLAlchemy basic support:
         query = query.order_by(MediaItem.release_year.desc())
     elif sort_by == 'newest':
         query = query.order_by(MediaItem.created_at.desc())
-    else: # Default: 'author'
+    else: 
         query = query.order_by(MediaItem.author_artist.asc())
 
     items = query.all()
@@ -329,6 +327,56 @@ def change_password():
             flash('Gespeichert.', 'success')
             return redirect(url_for('main.index'))
     return render_template('change_password.html')
+
+
+# -- ADMIN BACKUP ROUTEN (NEU) --
+
+@main.route('/admin/backup', methods=['GET'])
+@login_required
+def admin_backup():
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    return render_template('admin_backup.html')
+
+@main.route('/admin/backup/download')
+@login_required
+def admin_backup_download():
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    try:
+        path, filename = create_backup_zip()
+        # as_attachment sorgt dafür, dass der Browser es als Download behandelt
+        return send_file(path, as_attachment=True, download_name=filename)
+    except Exception as e:
+        flash(f'Backup Fehler: {str(e)}', 'error')
+        return redirect(url_for('main.admin_backup'))
+
+@main.route('/admin/restore', methods=['POST'])
+@login_required
+def admin_restore():
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    
+    file = request.files.get('backup_file')
+    if not file or file.filename == '':
+        flash('Keine Datei ausgewählt.', 'error')
+        return redirect(url_for('main.admin_backup'))
+    
+    if file and file.filename.endswith('.zip'):
+        # Speichern wir das Zip temporär
+        temp_zip_path = os.path.join(current_app.instance_path, 'upload_restore.zip')
+        file.save(temp_zip_path)
+        
+        try:
+            restore_backup_zip(temp_zip_path)
+            flash('System erfolgreich wiederhergestellt! Bitte neu einloggen.', 'success')
+            # Datei aufräumen
+            if os.path.exists(temp_zip_path): os.remove(temp_zip_path)
+            
+            return redirect(url_for('main.index'))
+        except Exception as e:
+            flash(f'Restore Fehler: {str(e)}', 'error')
+            return redirect(url_for('main.admin_backup'))
+            
+    flash('Ungültiges Dateiformat. Bitte ZIP hochladen.', 'error')
+    return redirect(url_for('main.admin_backup'))
 
 
 # -- MEDIA ROUTES --
