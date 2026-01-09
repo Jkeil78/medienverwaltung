@@ -16,12 +16,19 @@
         button:hover { background-color: #218838; }
         .btn-cancel { text-decoration: none; color: #6c757d; margin-left: 15px; }
 
-        /* NEU: Input Group für Barcode + Button */
+        /* Input Group für Barcode + Button */
         .input-group { display: flex; gap: 10px; }
         .btn-search { background-color: #17a2b8; padding: 8px 15px; font-size: 14px; white-space: nowrap; }
         
         .loading { opacity: 0.5; pointer-events: none; }
         .cover-preview { margin-top: 10px; max-height: 150px; display: none; border: 1px solid #ddd; padding: 2px; }
+
+        /* NEU: Styling für die Trackliste */
+        #tracks-section { display: none; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px; }
+        .track-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .track-table th { text-align: left; padding: 5px; border-bottom: 2px solid #ddd; }
+        .track-table td { padding: 5px; border-bottom: 1px solid #eee; }
+        .track-input { border: 1px solid #ddd; padding: 4px; width: 100%; }
     </style>
 </head>
 <body>
@@ -37,7 +44,7 @@
                 <input type="text" id="barcode" name="barcode" placeholder="Hier scannen..." autofocus>
                 <button type="button" class="btn-search" onclick="lookupBarcode()">Online Suchen</button>
             </div>
-            <small style="color: #666;">Funktioniert am besten mit Buch-ISBNs.</small>
+            <small style="color: #666;">Scanne ISBN (Bücher) oder EAN (Musik/Filme).</small>
         </div>
 
         <div class="form-group">
@@ -47,7 +54,7 @@
 
         <div class="form-group">
             <label>Kategorie *</label>
-            <select name="category" required>
+            <select name="category" id="category" required>
                 {% for cat in categories %}
                     <option value="{{ cat }}">{{ cat }}</option>
                 {% endfor %}
@@ -87,6 +94,13 @@
             <textarea id="description" name="description"></textarea>
         </div>
         
+        <div id="tracks-section">
+            <label>Erkannte Titel (Tracks)</label>
+            <div id="tracks-container">
+                </div>
+            <small style="color: #666;">Titel können vor dem Speichern bearbeitet werden.</small>
+        </div>
+
         <div style="margin-top: 20px;">
             <button type="submit">Speichern</button>
             <a href="{{ url_for('main.index') }}" class="btn-cancel">Abbrechen</a>
@@ -115,23 +129,63 @@ async function lookupBarcode() {
         const data = await response.json();
 
         if (data.success) {
-            // Felder füllen
+            // 1. Basis-Felder füllen
             if(data.title) document.getElementById('title').value = data.title;
             if(data.author) document.getElementById('author').value = data.author;
             if(data.year) document.getElementById('year').value = data.year;
+            if(data.description) document.getElementById('description').value = data.description;
             
-            // Kategorie auf "Buch" setzen, da API primär Bücher findet
-            // (Index 0 ist meist "Buch" in unserer Liste)
-            const catSelect = document.querySelector('select[name="category"]');
-            if(catSelect) catSelect.value = "Buch"; 
+            // 2. Kategorie automatisch setzen (falls API eine liefert)
+            const catSelect = document.getElementById('category');
+            if (data.category && data.category !== "") {
+                // Versuchen, den Wert direkt zu setzen
+                catSelect.value = data.category;
+            } else {
+                // Fallback: Wenn nichts kommt, nehmen wir an es ist ein Buch (wie bisher)
+                catSelect.value = "Buch"; 
+            }
 
-            // Cover Bild Handling
+            // 3. Cover Bild Handling
             if (data.image_url) {
                 document.getElementById('remote_image_url').value = data.image_url;
                 const imgPreview = document.getElementById('preview');
                 imgPreview.src = data.image_url;
                 imgPreview.style.display = 'block';
             }
+
+            // 4. Tracks (Titelliste) verarbeiten
+            const trackSection = document.getElementById('tracks-section');
+            const trackContainer = document.getElementById('tracks-container');
+            trackContainer.innerHTML = ''; // Vorher leeren
+
+            if (data.tracks && data.tracks.length > 0) {
+                trackSection.style.display = 'block'; // Anzeigen
+                
+                let html = '<table class="track-table"><thead><tr><th width="10%">Pos</th><th>Titel</th><th width="15%">Dauer</th></tr></thead><tbody>';
+                
+                data.tracks.forEach((track) => {
+                    html += `
+                        <tr>
+                            <td>
+                                <input type="text" name="track_position" value="${track.position}" class="track-input" style="text-align:center;">
+                            </td>
+                            <td>
+                                <input type="text" name="track_title" value="${track.title}" class="track-input">
+                            </td>
+                            <td>
+                                <input type="text" name="track_duration" value="${track.duration}" class="track-input" style="text-align:center;">
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                trackContainer.innerHTML = html;
+            } else {
+                // Keine Tracks gefunden -> Bereich ausblenden
+                trackSection.style.display = 'none';
+            }
+
         } else {
             alert("Keine Daten für diesen Code gefunden.");
         }
@@ -144,7 +198,7 @@ async function lookupBarcode() {
     }
 }
 
-// Optional: Enter-Taste im Barcode Feld löst Suche aus statt Submit
+// Enter-Taste im Barcode Feld löst Suche aus statt Submit
 document.getElementById('barcode').addEventListener('keypress', function (e) {
     if (e.key === 'Enter') {
         e.preventDefault(); // Kein Formular Submit

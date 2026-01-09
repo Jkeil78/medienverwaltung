@@ -9,7 +9,6 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 from extensions import db
-# WICHTIG: AppSetting hier im Import ergänzt
 from models import User, Role, Location, MediaItem, Collection, Track, AppSetting
 from sqlalchemy import or_
 
@@ -24,7 +23,6 @@ def get_config_value(key, default=None):
         if setting and setting.value:
             return setting.value
     except Exception:
-        # Falls Tabelle noch nicht existiert oder DB Fehler
         pass
     return default
 
@@ -66,8 +64,6 @@ def download_remote_image(url):
                     f.write(chunk)
             print(f"DEBUG: Download erfolgreich: {new_filename}")
             return new_filename
-        else:
-            print(f"DEBUG: Download fehlgeschlagen. Status: {response.status_code}")
     except Exception as e:
         print(f"DEBUG: Exception beim Download: {e}")
     return None
@@ -93,7 +89,7 @@ def generate_inventory_number():
     return f"INV-{year}-{unique_part}"
 
 
-# -- API ROUTE (DYNAMIC TOKEN) --
+# -- API ROUTE (ERWEITERT FÜR FORMAT & TRACKS) --
 
 @main.route('/api/lookup/<barcode>')
 @login_required
@@ -106,27 +102,26 @@ def api_lookup(barcode):
         "author": "",
         "year": "",
         "description": "",
-        "image_url": "" 
+        "image_url": "",
+        "category": "", # NEU: Vorgeschlagene Kategorie
+        "tracks": []    # NEU: Liste der Tracks
     }
     
     clean_isbn = ''.join(c for c in barcode if c.isdigit() or c.upper() == 'X')
     
-    # ---------------------------------------------------------
-    # SCHRITT 1: Google Books
-    # ---------------------------------------------------------
+    # 1. Google Books
     try:
         google_url = f"https://www.googleapis.com/books/v1/volumes?q=isbn:{clean_isbn}"
         res = requests.get(google_url, timeout=5)
         if res.status_code == 200:
             g_json = res.json()
             if "items" in g_json and len(g_json["items"]) > 0:
-                print("DEBUG: Google Books hat Daten gefunden.")
                 info = g_json["items"][0].get("volumeInfo", {})
-                
                 data["success"] = True
                 data["title"] = info.get("title", "")
                 data["author"] = ", ".join(info.get("authors", []))
                 data["description"] = info.get("description", "")[:800]
+                data["category"] = "Buch" # Google Books ist meist Buch
                 
                 pub_date = info.get("publishedDate", "")
                 if len(pub_date) >= 4: data["year"] = pub_date[:4]
@@ -134,17 +129,13 @@ def api_lookup(barcode):
                 imgs = info.get("imageLinks", {})
                 img_url = imgs.get("thumbnail") or imgs.get("smallThumbnail")
                 if img_url:
-                    if img_url.startswith("http://"):
-                        img_url = img_url.replace("http://", "https://")
+                    if img_url.startswith("http://"): img_url = img_url.replace("http://", "https://")
                     data["image_url"] = img_url
     except Exception as e:
         print(f"DEBUG: Google Error: {e}")
 
-    # ---------------------------------------------------------
-    # SCHRITT 2: Open Library
-    # ---------------------------------------------------------
+    # 2. Open Library
     if not data["success"] or not data["image_url"]:
-        print("DEBUG: Starte OpenLibrary (Fallback)...")
         try:
             ol_url = f"https://openlibrary.org/api/books?bibkeys=ISBN:{clean_isbn}&format=json&jscmd=data"
             res = requests.get(ol_url, timeout=5)
@@ -158,62 +149,88 @@ def api_lookup(barcode):
                         data["author"] = ", ".join([a["name"] for a in book.get("authors", [])])
                         match = re.search(r'\d{4}', book.get("publish_date", ""))
                         if match: data["year"] = match.group(0)
+                        data["category"] = "Buch"
 
                     if "cover" in book:
                         cover_url = book["cover"].get("large", "") or book["cover"].get("medium", "")
-                        if cover_url:
-                            data["image_url"] = cover_url
+                        if cover_url: data["image_url"] = cover_url
         except Exception as e:
             print(f"DEBUG: OpenLibrary Error: {e}")
 
-    # ---------------------------------------------------------
-    # SCHRITT 3: Discogs (Mit DB Token)
-    # ---------------------------------------------------------
+    # 3. Discogs (Erweitert)
     discogs_token = get_config_value('discogs_token')
     
-    # Nur ausführen wenn Token existiert UND wir noch Daten brauchen (oder explizit nachbessern wollen)
-    # Hier: Fallback wenn bisher nichts gefunden wurde
-    if not data["success"] and discogs_token:
-        print("DEBUG: Starte Discogs Lookup...")
-        try:
-            headers = {
-                "User-Agent": "HomeInventoryApp/1.0",
-                "Authorization": f"Discogs token={discogs_token}"
-            }
-            discogs_url = "https://api.discogs.com/database/search"
-            params = {"barcode": barcode, "type": "release", "per_page": 1}
-            
-            res = requests.get(discogs_url, headers=headers, params=params, timeout=5)
-            
-            if res.status_code == 200:
-                d_json = res.json()
-                results = d_json.get("results", [])
+    # Wenn wir noch keine perfekten Daten haben oder explizit Discogs-Daten wollen
+    if discogs_token:
+        # Checken ob bisher nur Buch gefunden wurde, aber eigentlich Musik gesucht wird? 
+        # Einfachheitshalber: Wenn nicht success ODER wenn wir explizit erweitern wollen
+        if not data["success"]: 
+            try:
+                headers = {
+                    "User-Agent": "HomeInventoryApp/1.0",
+                    "Authorization": f"Discogs token={discogs_token}"
+                }
+                discogs_url = "https://api.discogs.com/database/search"
+                params = {"barcode": barcode, "type": "release", "per_page": 1}
                 
-                if results:
-                    print("DEBUG: Discogs hat Daten gefunden!")
-                    item = results[0]
-                    data["success"] = True
+                res = requests.get(discogs_url, headers=headers, params=params, timeout=5)
+                
+                if res.status_code == 200:
+                    d_json = res.json()
+                    results = d_json.get("results", [])
                     
-                    full_title = item.get("title", "")
-                    if " - " in full_title:
-                        parts = full_title.split(" - ", 1)
-                        data["author"] = parts[0].strip()
-                        data["title"] = parts[1].strip()
-                    else:
-                        data["title"] = full_title
+                    if results:
+                        item = results[0]
+                        data["success"] = True
                         
-                    data["year"] = item.get("year", "")
-                    img_url = item.get("cover_image", "") or item.get("thumb", "")
-                    if img_url: data["image_url"] = img_url
+                        # Titel / Autor
+                        full_title = item.get("title", "")
+                        if " - " in full_title:
+                            parts = full_title.split(" - ", 1)
+                            data["author"] = parts[0].strip()
+                            data["title"] = parts[1].strip()
+                        else:
+                            data["title"] = full_title
+                            
+                        data["year"] = item.get("year", "")
+                        img_url = item.get("cover_image", "") or item.get("thumb", "")
+                        if img_url: data["image_url"] = img_url
                         
-                    genres = item.get("genre", []) + item.get("style", [])
-                    data["description"] = "Genres: " + ", ".join(genres)
-            elif res.status_code == 401:
-                print("DEBUG: Discogs Token ungültig.")
-        except Exception as e:
-            print(f"DEBUG: Discogs Error: {e}")
-    elif not discogs_token and not data["success"]:
-        print("DEBUG: Kein Discogs Token in den Einstellungen hinterlegt.")
+                        genres = item.get("genre", []) + item.get("style", [])
+                        data["description"] = "Genres: " + ", ".join(genres)
+
+                        # A) Format-Erkennung
+                        formats = item.get("format", [])
+                        # Discogs liefert z.B. ["Vinyl", "LP", "Album"]
+                        if "Vinyl" in formats:
+                            data["category"] = "Vinyl/LP"
+                        elif "CD" in formats:
+                            data["category"] = "CD"
+                        elif "DVD" in formats:
+                            data["category"] = "Film (DVD/BluRay)"
+                        
+                        # B) Tracklist laden (Detail-Call)
+                        resource_url = item.get("resource_url")
+                        if resource_url:
+                            # Wir müssen den Token auch hier mitsenden
+                            det_res = requests.get(resource_url, headers=headers, timeout=5)
+                            if det_res.status_code == 200:
+                                det_data = det_res.json()
+                                tracklist = det_data.get("tracklist", [])
+                                tracks_clean = []
+                                for t in tracklist:
+                                    # Überspringen von Headern/Index tracks wenn nötig
+                                    if t.get("type_") == "heading": continue
+                                    
+                                    tracks_clean.append({
+                                        "position": t.get("position", ""),
+                                        "title": t.get("title", ""),
+                                        "duration": t.get("duration", "")
+                                    })
+                                data["tracks"] = tracks_clean
+
+            except Exception as e:
+                print(f"DEBUG: Discogs Error: {e}")
 
     return jsonify(data)
 
@@ -238,8 +255,7 @@ def qrcode_image(inventory_number):
 
 @main.route('/')
 def index():
-    if not current_user.is_authenticated:
-        return redirect(url_for('main.login'))
+    if not current_user.is_authenticated: return redirect(url_for('main.login'))
 
     search_query = request.args.get('q')
     filter_category = request.args.get('category')
@@ -256,22 +272,18 @@ def index():
             MediaItem.barcode.ilike(search_term)
         ))
 
-    if filter_category and filter_category != "":
-        query = query.filter(MediaItem.category == filter_category)
-    if filter_location and filter_location != "":
-        query = query.filter(MediaItem.location_id == int(filter_location))
+    if filter_category: query = query.filter(MediaItem.category == filter_category)
+    if filter_location: query = query.filter(MediaItem.location_id == int(filter_location))
 
     items = query.order_by(MediaItem.created_at.desc()).all()
-    locations = Location.query.all()
-    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
 
-    return render_template('index.html', items=items, locations=locations_sorted, categories=categories)
+    return render_template('index.html', items=items, locations=locations, categories=categories)
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+    if current_user.is_authenticated: return redirect(url_for('main.index'))
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user and user.check_password(request.form.get('password')):
@@ -286,75 +298,18 @@ def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
-# -- SETTINGS ROUTE (NEU) --
-
 @main.route('/settings', methods=['GET', 'POST'])
 @login_required
 def settings():
-    if not current_user.has_role('Admin'):
-        flash('Zugriff verweigert.', 'error')
-        return redirect(url_for('main.index'))
-
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     if request.method == 'POST':
-        token = request.form.get('discogs_token')
-        set_config_value('discogs_token', token.strip() if token else "")
+        set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
         flash('Einstellungen gespeichert.', 'success')
         return redirect(url_for('main.settings'))
-
-    # Aktuelle Werte laden
-    current_token = get_config_value('discogs_token', '')
-    return render_template('settings.html', discogs_token=current_token)
+    return render_template('settings.html', discogs_token=get_config_value('discogs_token', ''))
 
 
-# -- RESTLICHE ROUTEN --
-
-@main.route('/admin/locations/edit/<int:loc_id>', methods=['GET', 'POST'])
-@login_required
-def location_edit(loc_id):
-    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    loc = Location.query.get_or_404(loc_id)
-    possible_parents = Location.query.filter(Location.id != loc_id).all()
-    sorted_parents = sorted(possible_parents, key=lambda x: x.full_path)
-    if request.method == 'POST':
-        loc.name = request.form.get('name')
-        pid = request.form.get('parent_id')
-        if pid and pid.strip():
-            pid = int(pid)
-            if pid == loc.id:
-                flash('Fehler: Selbstbezug.', 'error')
-                return redirect(url_for('main.location_edit', loc_id=loc.id))
-            loc.parent_id = pid
-        else:
-            loc.parent_id = None
-        db.session.commit()
-        flash('Standort aktualisiert.', 'success')
-        return redirect(url_for('main.admin_locations'))
-    return render_template('location_edit.html', location=loc, all_locations=sorted_parents)
-
-@main.route('/profile/change_password', methods=['GET', 'POST'])
-@login_required
-def change_password():
-    if request.method == 'POST':
-        current = request.form.get('current_password')
-        new = request.form.get('new_password')
-        confirm = request.form.get('confirm_password')
-        if not current_user.check_password(current):
-            flash('Passwort falsch.', 'error')
-        elif new != confirm:
-            flash('Passwörter ungleich.', 'error')
-        else:
-            current_user.set_password(new)
-            db.session.commit()
-            flash('Gespeichert.', 'success')
-            return redirect(url_for('main.index'))
-    return render_template('change_password.html')
-
-@main.route('/media/<int:item_id>')
-@login_required
-def media_detail(item_id):
-    item = MediaItem.query.get_or_404(item_id)
-    tracks = item.tracks.order_by(Track.position).all()
-    return render_template('media_detail.html', item=item, tracks=tracks)
+# -- MEDIA CREATE (ERWEITERT UM TRACK-SPEICHERUNG) --
 
 @main.route('/media/create', methods=['GET', 'POST'])
 @login_required
@@ -364,12 +319,15 @@ def media_create():
         remote_url = request.form.get('remote_image_url')
         filename = None
         image_file = request.files.get('image')
+        
         if image_file and image_file.filename != '':
             filename = save_image(image_file)
         elif remote_url and remote_url.strip() != '':
             filename = download_remote_image(remote_url)
+
         ry = request.form.get('release_year')
         ry = int(ry) if ry and ry.strip() else None
+
         new_item = MediaItem(
             inventory_number=generate_inventory_number(),
             title=title,
@@ -383,13 +341,48 @@ def media_create():
             user_id=current_user.id
         )
         db.session.add(new_item)
+        
+        # WICHTIG: Erst committen, damit new_item eine ID bekommt (für die Tracks)
         db.session.commit()
+
+        # Tracks speichern (aus Formular-Listen)
+        # HTML muss inputs haben: name="track_title" und name="track_duration" etc.
+        track_titles = request.form.getlist('track_title')
+        track_positions = request.form.getlist('track_position')
+        track_durations = request.form.getlist('track_duration')
+        
+        if track_titles:
+            for i, t_title in enumerate(track_titles):
+                if t_title.strip():
+                    pos = track_positions[i] if i < len(track_positions) else (i + 1)
+                    dur = track_durations[i] if i < len(track_durations) else ""
+                    # Position bereinigen (falls String "A1" o.ä. kommt, hier vereinfacht als int oder 0 gespeichert)
+                    # Da Track.position in models.py ein Integer ist, versuchen wir es zu wandeln. 
+                    # Discogs hat oft "A1", "B2". Das passt nicht in INT.
+                    # TODO: Track.position in models.py idealerweise auf String ändern oder hier Logik anpassen.
+                    # Wir nehmen hier einfach den Loop-Index + 1 als Fallback für die Sortierung.
+                    
+                    try:
+                        pos_int = int(pos)
+                    except:
+                        pos_int = i + 1
+
+                    new_track = Track(
+                        media_item_id=new_item.id,
+                        title=t_title,
+                        position=pos_int,
+                        duration=dur
+                    )
+                    db.session.add(new_track)
+            db.session.commit()
+
         flash(f'Medium "{title}" angelegt.', 'success')
         return redirect(url_for('main.index'))
-    locations = Location.query.all()
-    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+
+    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_create.html', locations=locations_sorted, categories=categories)
+    return render_template('media_create.html', locations=locations, categories=categories)
+
 
 @main.route('/media/edit/<int:item_id>', methods=['GET', 'POST'])
 @login_required
@@ -404,6 +397,7 @@ def media_edit(item_id):
         item.barcode = request.form.get('barcode') or None
         item.description = request.form.get('description')
         item.location_id = int(request.form.get('location_id') or 1)
+        
         lent = request.form.get('lent_to')
         if lent and lent.strip():
             if not item.lent_to: item.lent_at = datetime.now()
@@ -411,6 +405,7 @@ def media_edit(item_id):
         else:
             item.lent_to = None
             item.lent_at = None
+
         image_file = request.files.get('image')
         remote_url = request.form.get('remote_image_url')
         new_filename = None
@@ -420,13 +415,14 @@ def media_edit(item_id):
             new_filename = download_remote_image(remote_url)
         if new_filename:
             item.image_filename = new_filename
+
         db.session.commit()
         flash('Gespeichert.', 'success')
         return redirect(url_for('main.media_detail', item_id=item.id))
-    locations = Location.query.all()
-    locations_sorted = sorted(locations, key=lambda x: x.full_path)
+
+    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
-    return render_template('media_edit.html', item=item, locations=locations_sorted, categories=categories)
+    return render_template('media_edit.html', item=item, locations=locations, categories=categories)
 
 @main.route('/media/delete/<int:item_id>')
 @login_required
@@ -456,10 +452,6 @@ def track_delete(track_id):
     db.session.delete(t)
     db.session.commit()
     return redirect(url_for('main.media_detail', item_id=mid))
-
-@main.route('/admin')
-@login_required
-def admin_redirect(): return redirect(url_for('main.admin_users'))
 
 @main.route('/admin/users')
 @login_required
@@ -492,9 +484,31 @@ def user_delete(user_id):
 @login_required
 def admin_locations():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    locations = Location.query.all()
-    locations_sorted = sorted(locations, key=lambda x: x.full_path)
-    return render_template('admin_locations.html', locations=locations_sorted)
+    locations = sorted(Location.query.all(), key=lambda x: x.full_path)
+    return render_template('admin_locations.html', locations=locations)
+
+@main.route('/admin/locations/edit/<int:loc_id>', methods=['GET', 'POST'])
+@login_required
+def location_edit(loc_id):
+    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    loc = Location.query.get_or_404(loc_id)
+    possible_parents = Location.query.filter(Location.id != loc_id).all()
+    sorted_parents = sorted(possible_parents, key=lambda x: x.full_path)
+    if request.method == 'POST':
+        loc.name = request.form.get('name')
+        pid = request.form.get('parent_id')
+        if pid and pid.strip():
+            pid = int(pid)
+            if pid == loc.id:
+                flash('Fehler: Selbstbezug.', 'error')
+                return redirect(url_for('main.location_edit', loc_id=loc.id))
+            loc.parent_id = pid
+        else:
+            loc.parent_id = None
+        db.session.commit()
+        flash('Standort aktualisiert.', 'success')
+        return redirect(url_for('main.admin_locations'))
+    return render_template('location_edit.html', location=loc, all_locations=sorted_parents)
 
 @main.route('/admin/locations/create', methods=['POST'])
 @login_required
@@ -514,3 +528,7 @@ def location_delete(loc_id):
         db.session.delete(l)
         db.session.commit()
     return redirect(url_for('main.admin_locations'))
+
+@main.route('/admin')
+@login_required
+def admin_redirect(): return redirect(url_for('main.admin_users'))
