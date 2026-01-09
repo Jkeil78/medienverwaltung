@@ -16,27 +16,31 @@
 
 <div class="card mb-4 shadow-sm">
     <div class="card-body py-3">
-        <form method="GET" class="row g-2 align-items-center">
-            <div class="col-12 d-lg-none mb-2">
-                 <input type="text" name="q" class="form-control" placeholder="Suche..." value="{{ request.args.get('q', '') }}">
+        <form method="GET" class="row g-2 align-items-center" action="{{ url_for('main.index') }}">
+            <div class="col-12 col-md-3 mb-2 mb-md-0">
+                 <div class="input-group">
+                    <input type="text" name="q" class="form-control" placeholder="Suche..." value="{{ request.args.get('q', '') }}">
+                    <button class="btn btn-outline-secondary" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                 </div>
             </div>
-            {% if request.args.get('q') %}
-                <input type="hidden" name="q" value="{{ request.args.get('q') }}" class="d-none d-lg-block">
-            {% endif %}
 
             <div class="col-12 col-md-auto">
-                <span class="fw-bold text-muted"><i class="bi bi-funnel"></i> Filter:</span>
+                <span class="fw-bold text-muted small text-uppercase"><i class="bi bi-funnel"></i> Filter & Sort:</span>
             </div>
+
             <div class="col-6 col-md-auto">
                 <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
-                    <option value="">Kategorie...</option>
+                    <option value="">Alle Kategorien</option>
                     {% for cat in categories %}
                         <option value="{{ cat }}" {% if request.args.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
                     {% endfor %}
                 </select>
             </div>
+
             <div class="col-6 col-md-auto">
-                <select name="location" class="form-select">
+                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
                     <option value="">Alle Standorte</option>
                     {% for loc in locations %}
                         <option value="{{ loc.id }}" {% if request.args.get('location')|int == loc.id %}selected{% endif %}>
@@ -46,9 +50,20 @@
                 </select>
             </div>
             
-            {% if request.args.get('q') or request.args.get('category') or request.args.get('location') %}
+            <div class="col-12 col-md-auto">
+                <select name="sort" class="form-select form-select-sm bg-light" onchange="this.form.submit()" title="Sortierung">
+                    <option value="author" {% if current_sort == 'author' %}selected{% endif %}>Nach Autor (A-Z)</option>
+                    <option value="title" {% if current_sort == 'title' %}selected{% endif %}>Nach Titel (A-Z)</option>
+                    <option value="year" {% if current_sort == 'year' %}selected{% endif %}>Nach Jahr (Neu-Alt)</option>
+                    <option value="newest" {% if current_sort == 'newest' %}selected{% endif %}>Zuletzt hinzugefügt</option>
+                </select>
+            </div>
+            
+            {% if request.args.get('q') or request.args.get('category') or request.args.get('location') or request.args.get('sort') != 'author' %}
             <div class="col-12 col-md-auto ms-auto">
-                <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary w-100">Reset</a>
+                <a href="{{ url_for('main.index') }}" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-x-circle"></i> Reset
+                </a>
             </div>
             {% endif %}
         </form>
@@ -64,7 +79,9 @@
                         <tr>
                             <th style="width: 50px;">Bild</th>
                             <th>Titel / Info</th>
-                            <th class="d-none d-md-table-cell">Kategorie</th> <th class="d-none d-lg-table-cell">Standort</th>  <th class="text-end"></th>
+                            <th class="d-none d-md-table-cell">Kategorie</th> 
+                            <th class="d-none d-lg-table-cell">Standort</th>  
+                            <th class="text-end"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -80,7 +97,7 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold text-dark d-block text-truncate" style="max-width: 200px;">
+                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold text-dark d-block text-truncate" style="max-width: 250px;">
                                     {{ item.title }}
                                 </a>
                                 <div class="small text-muted d-md-none">
@@ -117,14 +134,14 @@
                     
                     <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none text-dark">
                         {% if item.image_filename %}
-                            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" class="card-img-top img-cover rounded-top" alt="{{ item.title }}">
+                            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" class="card-img-top img-cover rounded-top" alt="{{ item.title }}" style="height: 200px; object-fit: cover;">
                         {% else %}
-                            <div class="avatar-placeholder card-img-top rounded-top">
+                            <div class="avatar-placeholder card-img-top rounded-top d-flex align-items-center justify-content-center bg-light text-muted" style="height: 200px;">
                                 <i class="bi bi-image fs-1"></i>
                             </div>
                         {% endif %}
                         <div class="card-body p-2">
-                            <h6 class="card-title text-truncate mb-1" style="font-size: 0.95rem;">{{ item.title }}</h6>
+                            <h6 class="card-title text-truncate mb-1" style="font-size: 0.95rem;" title="{{ item.title }}">{{ item.title }}</h6>
                             <p class="card-text small text-muted mb-1 text-truncate">{{ item.author_artist or '-' }}</p>
                         </div>
                     </a>

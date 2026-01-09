@@ -247,12 +247,15 @@ def qrcode_image(inventory_number):
 def index():
     if not current_user.is_authenticated: return redirect(url_for('main.login'))
 
+    # Parameter aus URL holen
     search_query = request.args.get('q')
     filter_category = request.args.get('category')
     filter_location = request.args.get('location')
+    sort_by = request.args.get('sort', 'author') # Default: Author
 
     query = MediaItem.query
 
+    # 1. Filter
     if search_query:
         search_term = f"%{search_query}%"
         query = query.filter(or_(
@@ -265,11 +268,22 @@ def index():
     if filter_category: query = query.filter(MediaItem.category == filter_category)
     if filter_location: query = query.filter(MediaItem.location_id == int(filter_location))
 
-    items = query.order_by(MediaItem.created_at.desc()).all()
+    # 2. Sortierung
+    if sort_by == 'title':
+        query = query.order_by(MediaItem.title.asc())
+    elif sort_by == 'year':
+        # Nulls last wäre schöner, aber SQLite/SQLAlchemy basic support:
+        query = query.order_by(MediaItem.release_year.desc())
+    elif sort_by == 'newest':
+        query = query.order_by(MediaItem.created_at.desc())
+    else: # Default: 'author'
+        query = query.order_by(MediaItem.author_artist.asc())
+
+    items = query.all()
     locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
 
-    return render_template('index.html', items=items, locations=locations, categories=categories)
+    return render_template('index.html', items=items, locations=locations, categories=categories, current_sort=sort_by)
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
