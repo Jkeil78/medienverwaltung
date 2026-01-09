@@ -11,7 +11,6 @@ from werkzeug.utils import secure_filename
 from extensions import db
 from models import User, Role, Location, MediaItem, Collection, Track, AppSetting
 from sqlalchemy import or_
-# NEU: Import der Backup Utils
 from backup_utils import create_backup_zip, restore_backup_zip
 
 main = Blueprint('main', __name__)
@@ -329,7 +328,7 @@ def change_password():
     return render_template('change_password.html')
 
 
-# -- ADMIN BACKUP ROUTEN (NEU) --
+# -- ADMIN BACKUP ROUTEN --
 
 @main.route('/admin/backup', methods=['GET'])
 @login_required
@@ -343,7 +342,6 @@ def admin_backup_download():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     try:
         path, filename = create_backup_zip()
-        # as_attachment sorgt dafür, dass der Browser es als Download behandelt
         return send_file(path, as_attachment=True, download_name=filename)
     except Exception as e:
         flash(f'Backup Fehler: {str(e)}', 'error')
@@ -360,16 +358,17 @@ def admin_restore():
         return redirect(url_for('main.admin_backup'))
     
     if file and file.filename.endswith('.zip'):
-        # Speichern wir das Zip temporär
+        # FIX: Sicherstellen, dass der Instance-Ordner existiert, bevor wir speichern
+        if not os.path.exists(current_app.instance_path):
+            os.makedirs(current_app.instance_path)
+
         temp_zip_path = os.path.join(current_app.instance_path, 'upload_restore.zip')
         file.save(temp_zip_path)
         
         try:
             restore_backup_zip(temp_zip_path)
             flash('System erfolgreich wiederhergestellt! Bitte neu einloggen.', 'success')
-            # Datei aufräumen
             if os.path.exists(temp_zip_path): os.remove(temp_zip_path)
-            
             return redirect(url_for('main.index'))
         except Exception as e:
             flash(f'Restore Fehler: {str(e)}', 'error')
