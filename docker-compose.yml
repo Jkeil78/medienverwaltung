@@ -4,7 +4,6 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      # Wir mappen die Ordner auf dem Server (links) in den Container (rechts)
-      - /docker/medien_verwaltung/uploads:/app/static/uploads
-      - /docker/medien_verwaltung/medien.db:/app/medien.db
+      - ./data/uploads:/app/static/uploads
+      - ./data/instance:/app/instance
     restart: always

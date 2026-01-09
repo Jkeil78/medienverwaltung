@@ -17,11 +17,14 @@ def create_backup_zip():
     if 'sqlite' not in db_uri:
         raise Exception("Backup funktioniert derzeit nur mit SQLite Datenbanken.")
 
+    # Pfad aus URI extrahieren
     if '///' in db_uri:
         db_path = db_uri.split('///')[1]
     else:
         db_path = 'inventory.db'
 
+    # Falls der Pfad in der Config absolut ist (was er in der neuen app.py ist), nutzen wir ihn direkt.
+    # Falls er relativ ist, suchen wir im Instance-Ordner.
     if not os.path.isabs(db_path):
         possible_path = os.path.join(current_app.instance_path, db_path)
         if not os.path.exists(possible_path):
@@ -43,12 +46,14 @@ def create_backup_zip():
 
     # 3. Zip erstellen
     with zipfile.ZipFile(backup_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+        # Wir speichern die DB im Zip immer als 'database.sqlite', egal wie sie original heißt
         zipf.write(db_path, arcname='database.sqlite')
         
         if os.path.exists(upload_folder):
             for root, dirs, files in os.walk(upload_folder):
                 for file in files:
                     file_path = os.path.join(root, file)
+                    # Relativer Pfad im Zip (z.B. uploads/bild.jpg)
                     arcname = os.path.join('uploads', os.path.relpath(file_path, upload_folder))
                     zipf.write(file_path, arcname=arcname)
     
@@ -69,21 +74,20 @@ def restore_backup_zip(zip_filepath):
     else:
         db_file_name = 'inventory.db'
 
+    # Ziel-Pfad bestimmen (Präferenz: Instance Path)
     if not os.path.isabs(db_file_name):
          target_db_path = os.path.join(current_app.instance_path, db_file_name)
-         if not os.path.exists(target_db_path) and os.path.exists(os.path.join(current_app.root_path, db_file_name)):
-             target_db_path = os.path.join(current_app.root_path, db_file_name)
     else:
+        # Wenn der Pfad in der Config absolut ist (neue app.py macht das so), nutzen wir ihn direkt
         target_db_path = db_file_name
 
     upload_folder = current_app.config['UPLOAD_FOLDER']
 
     # 2. Verbindungen trennen
-    # Wir versuchen, die Verbindung zur DB zu schließen
     db.session.remove()
     db.engine.dispose()
     
-    # Kurze Pause, um dem OS Zeit zu geben, File-Locks zu lösen
+    # Kurze Pause für File-Locks
     time.sleep(0.5)
 
     # 3. Zip prüfen und entpacken
@@ -102,24 +106,22 @@ def restore_backup_zip(zip_filepath):
         extracted_db = os.path.join(temp_extract_path, 'database.sqlite')
         
         # A) Datenbank wiederherstellen
-        # WICHTIG: shutil.copyfile statt shutil.move verwenden!
-        # move löscht die Zieldatei (was bei Mounts verboten ist), copyfile überschreibt den Inhalt.
         
         # Backup der aktuellen DB (falls möglich)
         if os.path.exists(target_db_path):
             try:
                 shutil.copyfile(target_db_path, target_db_path + ".bak")
             except OSError:
-                print("Warnung: Konnte kein .bak der Datenbank erstellen (vielleicht auch gelockt/readonly).")
+                print("Warnung: Konnte kein .bak der Datenbank erstellen.")
 
-        # Neue DB drüberschreiben
+        # Neue DB drüberschreiben (copyfile behält Inodes/Mounts bei)
         try:
             shutil.copyfile(extracted_db, target_db_path)
         except OSError as e:
-            # Falls immer noch "Busy", ist die DB wahrscheinlich noch von einem Thread gelockt
-            raise Exception(f"Datenbankdatei ist gesperrt. Bitte Server neu starten und erneut versuchen. Fehler: {e}")
+            raise Exception(f"Datenbankdatei ist gesperrt. Bitte Container neu starten. Fehler: {e}")
 
         # B) Bilder extrahieren
+        # Wir löschen den Upload-Ordner NICHT vorher, sondern überschreiben/ergänzen nur.
         if not os.path.exists(upload_folder):
             os.makedirs(upload_folder)
             
