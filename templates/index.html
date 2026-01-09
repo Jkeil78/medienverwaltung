@@ -128,6 +128,11 @@
             {% for item in items %}
             <div class="col">
                 <div class="card h-100 shadow-sm border-0 position-relative">
+                    
+                    <span class="position-absolute top-0 start-0 badge bg-light text-dark border m-1 shadow-sm" style="opacity: 0.9;">
+                        {{ item.category }}
+                    </span>
+
                     {% if item.lent_to %}
                         <span class="position-absolute top-0 end-0 badge bg-warning text-dark m-1 shadow-sm">Verliehen</span>
                     {% endif %}
