@@ -5,7 +5,7 @@ import re
 import io      
 import qrcode
 from datetime import datetime
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file
+from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, jsonify, send_file, session
 from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.utils import secure_filename
 from extensions import db
