@@ -5,265 +5,264 @@
     <div class="col-12 col-xl-10">
         
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+            <div class="card-header bg-white border-bottom py-3">
                 <h4 class="mb-0 fw-bold text-primary">
-                    <i class="bi bi-pencil-square me-2"></i>Medium bearbeiten
+                    <i class="bi bi-plus-circle-fill me-2"></i>Neues Medium erfassen
                 </h4>
-                <a href="{{ url_for('main.media_delete', item_id=item.id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('Wirklich löschen?');">
-                    <i class="bi bi-trash"></i> Löschen
-                </a>
             </div>
             
             <div class="card-body p-4">
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="overwrite_tracks" id="overwrite_tracks" value="no">
+                <form method="POST" enctype="multipart/form-data" id="createForm">
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Barcode / ISBN Scanner</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
+                                <input type="text" id="barcode" name="barcode" class="form-control" placeholder="Barcode scannen oder tippen..." autofocus>
+                                <button type="button" class="btn btn-info text-white px-4" id="btn-search" onclick="lookupBarcode()">
+                                    <span id="search-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                    <span id="search-text"><i class="bi bi-cloud-download me-2"></i>Daten abrufen</span>
+                                </button>
+                            </div>
+                            <div class="form-text">Unterstützt Buch-ISBNs (Google/OpenLibrary) und EAN/UPC (Discogs).</div>
+                        </div>
+                    </div>
 
                     <div class="row g-4">
                         <div class="col-lg-8">
-                            
-                            <div class="alert alert-light border mb-3">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <i class="bi bi-disc text-info me-2"></i>
-                                        <strong>Discogs Import</strong><br>
-                                        <small class="text-muted">Sucht nach Titel & Autor. Importiert Bilder & Tracks.</small>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-info text-white" onclick="discogsMatch()">
-                                        <span id="spin-discogs" class="spinner-border spinner-border-sm d-none"></span>
-                                        Suchen & Abgleichen
-                                    </button>
-                                </div>
-                            </div>
-
                             <div class="row g-3">
                                 <div class="col-12">
-                                    <label class="form-label fw-bold">Titel *</label>
-                                    <input type="text" id="title" name="title" class="form-control fw-bold" value="{{ item.title }}" required>
+                                    <label for="title" class="form-label fw-bold">Titel des Werkes *</label>
+                                    <input type="text" id="title" name="title" class="form-control form-control-lg" required placeholder="z.B. Album Titel oder Buchname">
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Autor / Artist</label>
-                                    <input type="text" id="author" name="author_artist" class="form-control" value="{{ item.author_artist or '' }}">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Jahr</label>
-                                    <input type="number" id="year" name="release_year" class="form-control" value="{{ item.release_year or '' }}">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Kategorie</label>
-                                    <select name="category" id="category" class="form-select">
-                                        {% for cat in categories %}
-                                            <option value="{{ cat }}" {% if item.category == cat %}selected{% endif %}>{{ cat }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Standort</label>
-                                    <select name="location_id" class="form-select">
-                                        {% for loc in locations %}
-                                            <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.full_path }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Beschreibung</label>
-                                    <textarea name="description" class="form-control" rows="3">{{ item.description or '' }}</textarea>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small text-muted">Barcode</label>
-                                    <input type="text" name="barcode" class="form-control form-control-sm" value="{{ item.barcode or '' }}">
-                                </div>
-                            </div>
 
-                            <div id="import-tracks-area" class="mt-4 p-3 border rounded bg-light" style="display: none;">
-                                <h6 class="text-success fw-bold"><i class="bi bi-download me-2"></i>Neue Tracks aus Discogs Import</h6>
-                                <p class="small text-muted mb-2">Beim Speichern werden die <strong>alten Tracks gelöscht</strong> und diese hier hinzugefügt!</p>
-                                <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
-                                    <table class="table table-sm bg-white table-bordered">
-                                        <thead class="table-light"><tr><th>#</th><th>Titel</th><th>Zeit</th></tr></thead>
-                                        <tbody id="import-tracks-body"></tbody>
-                                    </table>
+                                <div class="col-md-6">
+                                    <label for="author" class="form-label">Autor / Artist / Regisseur</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                        <input type="text" id="author" name="author_artist" class="form-control">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="year" class="form-label">Erscheinungsjahr</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                                        <input type="number" id="year" name="release_year" class="form-control" placeholder="JJJJ">
+                                    </div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="category" class="form-label fw-bold">Kategorie *</label>
+                                    <select name="category" id="category" class="form-select" required>
+                                        {% for cat in categories %}
+                                            <option value="{{ cat }}">{{ cat }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label for="location_id" class="form-label">Standort</label>
+                                    <select name="location_id" id="location_id" class="form-select">
+                                        {% for loc in locations %}
+                                            <option value="{{ loc.id }}">
+                                                {{ loc.full_path }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="col-12">
+                                    <label for="description" class="form-label">Beschreibung / Inhalt</label>
+                                    <textarea id="description" name="description" class="form-control" rows="4"></textarea>
                                 </div>
                             </div>
                         </div>
 
                         <div class="col-lg-4">
-                            <div class="card bg-light border-0">
+                            <div class="card bg-light border-0 h-100">
                                 <div class="card-body">
                                     <label class="form-label fw-bold">Cover-Bild</label>
-                                    <input type="file" name="image" class="form-control mb-2" onchange="previewFile()">
+                                    
+                                    <input type="file" name="image" class="form-control mb-2" accept="image/*" onchange="previewFile()">
                                     <input type="hidden" id="remote_image_url" name="remote_image_url">
                                     
-                                    <div class="text-center mt-3 p-2 bg-white rounded border d-flex justify-content-center align-items-center" style="min-height: 200px;">
-                                        <img id="preview" src="{{ url_for('static', filename='uploads/' + item.image_filename) if item.image_filename else '' }}" 
-                                             class="img-fluid rounded" style="max-height: 250px; display: {{ 'block' if item.image_filename else 'none' }};">
-                                        <span id="preview-placeholder" class="text-muted" style="display: {{ 'none' if item.image_filename else 'block' }};">
-                                            Kein Bild
+                                    <div class="text-center mt-3 p-2 bg-white rounded border" style="min-height: 200px; display: flex; align-items: center; justify-content: center;">
+                                        <img id="preview" src="#" alt="Cover Vorschau" class="img-fluid rounded" style="display: none; max-height: 250px;">
+                                        <span id="preview-placeholder" class="text-muted">
+                                            <i class="bi bi-image fs-1 d-block mb-2"></i>
+                                            Kein Bild ausgewählt
                                         </span>
                                     </div>
                                 </div>
                             </div>
-                            <div class="mt-3 text-center opacity-50">
-                                <img src="{{ url_for('main.qrcode_image', inventory_number=item.inventory_number) }}" width="80">
-                                <div class="small mt-1">{{ item.inventory_number }}</div>
-                            </div>
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                        <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="btn btn-outline-secondary">Abbrechen</a>
-                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i>Speichern</button>
+                    <div id="tracks-section" class="mt-4 pt-3 border-top" style="display: none;">
+                        <h5 class="mb-3 text-secondary"><i class="bi bi-music-note-list me-2"></i>Erkannte Titel (Tracks)</h5>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle" id="tracks-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 80px;">Pos</th>
+                                        <th>Titel</th>
+                                        <th style="width: 100px;">Dauer</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tracks-container">
+                                    </tbody>
+                            </table>
+                        </div>
                     </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-5 pt-3 border-top">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary px-4">
+                            Abbrechen
+                        </a>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" name="commit_action" value="save_return" class="btn btn-outline-primary px-4">
+                                <i class="bi bi-check-lg me-2"></i>Speichern
+                            </button>
+                            
+                            <button type="submit" name="commit_action" value="save_next" class="btn btn-primary px-4">
+                                <i class="bi bi-plus-square me-2"></i>Speichern & Weiter
+                            </button>
+                        </div>
+                    </div>
+
                 </form>
-
-                <div class="mt-5 pt-4 border-top" id="existing-tracks-area">
-                    <h5 class="mb-3">Aktuelle Trackliste</h5>
-                    {% if item.tracks.count() > 0 %}
-                    <table class="table table-sm table-striped">
-                        <thead><tr><th width="50">#</th><th>Titel</th><th width="80">Dauer</th><th width="30"></th></tr></thead>
-                        <tbody>
-                            {% for track in item.tracks %}
-                            <tr>
-                                <td>{{ track.position }}</td>
-                                <td>{{ track.title }}</td>
-                                <td>{{ track.duration or '' }}</td>
-                                <td><a href="{{ url_for('main.track_delete', track_id=track.id) }}" class="text-danger"><i class="bi bi-x"></i></a></td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% else %}
-                        <p class="text-muted small">Keine Tracks vorhanden.</p>
-                    {% endif %}
-                </div>
-
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="imageModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Bild auswählen</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body bg-light">
-                <div class="row g-3" id="image-grid">
-                    </div>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Bild Vorschau für manuellen Upload
 function previewFile() {
+    const preview = document.getElementById('preview');
+    const placeholder = document.getElementById('preview-placeholder');
     const file = document.querySelector('input[type=file]').files[0];
     const reader = new FileReader();
-    reader.onload = function(e) {
-        document.getElementById('preview').src = e.target.result;
-        document.getElementById('preview').style.display = 'block';
-        document.getElementById('preview-placeholder').style.display = 'none';
+
+    reader.addEventListener("load", function () {
+        preview.src = reader.result;
+        preview.style.display = 'block';
+        placeholder.style.display = 'none';
+    }, false);
+
+    if (file) {
+        reader.readAsDataURL(file);
     }
-    if(file) reader.readAsDataURL(file);
 }
 
-// Global für Tracks
-let foundTracks = [];
-
-async function discogsMatch() {
-    const artist = document.getElementById('author').value;
-    const title = document.getElementById('title').value;
-    const spinner = document.getElementById('spin-discogs');
+async function lookupBarcode() {
+    const barcodeInput = document.getElementById('barcode');
+    const barcode = barcodeInput.value.trim();
     
-    if(!artist || !title) { alert("Bitte Titel und Autor eingeben."); return; }
+    if (!barcode) {
+        alert("Bitte erst einen Barcode eingeben oder scannen.");
+        return;
+    }
 
+    // UI Loading State
+    const btn = document.getElementById('btn-search');
+    const spinner = document.getElementById('search-spinner');
+    const btnText = document.getElementById('search-text');
+    
+    btn.disabled = true;
     spinner.classList.remove('d-none');
+    btnText.textContent = " Suche läuft...";
 
     try {
-        const res = await fetch(`/api/search_discogs?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
-        const data = await res.json();
-        
-        spinner.classList.add('d-none');
+        const response = await fetch('/api/lookup/' + barcode);
+        const data = await response.json();
 
-        if(data.success) {
-            // 1. Metadaten
-            if(data.year) document.getElementById('year').value = data.year;
-            if(data.category) document.getElementById('category').value = data.category;
+        if (data.success) {
+            // Felder füllen mit kleiner Animation (Highlight)
+            const fill = (id, val) => {
+                const el = document.getElementById(id);
+                if(val && el) {
+                    el.value = val;
+                    el.classList.add('bg-light'); // Visuelles Feedback
+                    setTimeout(() => el.classList.remove('bg-light'), 500);
+                }
+            };
 
-            // 2. Bilder Handling
-            if(data.images && data.images.length > 0) {
-                // Modal öffnen
-                const grid = document.getElementById('image-grid');
-                grid.innerHTML = '';
-                data.images.forEach(url => {
-                    const col = document.createElement('div');
-                    col.className = 'col-6 col-md-4 col-lg-3';
-                    col.innerHTML = `
-                        <div class="card h-100 shadow-sm cursor-pointer image-card" onclick="selectImage('${url}')">
-                            <img src="${url}" class="card-img-top" style="height: 150px; object-fit: cover;">
-                        </div>
-                    `;
-                    grid.appendChild(col);
-                });
-                
-                // Styles für Hover
-                const style = document.createElement('style');
-                style.innerHTML = `.image-card:hover { border: 2px solid #0d6efd; transform: scale(1.02); transition: 0.2s; cursor: pointer; }`;
-                document.head.appendChild(style);
+            fill('title', data.title);
+            fill('author', data.author);
+            fill('year', data.year);
+            fill('description', data.description);
 
-                const modal = new bootstrap.Modal(document.getElementById('imageModal'));
-                modal.show();
-            } else if (data.image_url) {
-                // Fallback wenn nur 1 Bild
-                selectImage(data.image_url);
+            // Kategorie
+            const catSelect = document.getElementById('category');
+            if (data.category && data.category !== "") {
+                catSelect.value = data.category;
+            } else {
+                catSelect.value = "Buch"; 
             }
 
-            // 3. Tracks Handling
-            if(data.tracks && data.tracks.length > 0) {
-                const tbody = document.getElementById('import-tracks-body');
-                tbody.innerHTML = '';
+            // Cover Bild
+            if (data.image_url) {
+                document.getElementById('remote_image_url').value = data.image_url;
+                const imgPreview = document.getElementById('preview');
+                const placeholder = document.getElementById('preview-placeholder');
                 
-                data.tracks.forEach(t => {
-                    tbody.innerHTML += `
+                imgPreview.src = data.image_url;
+                imgPreview.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+
+            // Tracks
+            const trackSection = document.getElementById('tracks-section');
+            const trackContainer = document.getElementById('tracks-container');
+            trackContainer.innerHTML = ''; 
+
+            if (data.tracks && data.tracks.length > 0) {
+                trackSection.style.display = 'block';
+                
+                data.tracks.forEach((track) => {
+                    const row = `
                         <tr>
-                            <td><input type="text" name="track_position" value="${t.position}" class="form-control form-control-sm text-center" style="width:50px;"></td>
-                            <td><input type="text" name="track_title" value="${t.title}" class="form-control form-control-sm"></td>
-                            <td><input type="text" name="track_duration" value="${t.duration}" class="form-control form-control-sm"></td>
+                            <td>
+                                <input type="text" name="track_position" value="${track.position}" class="form-control form-control-sm text-center">
+                            </td>
+                            <td>
+                                <input type="text" name="track_title" value="${track.title}" class="form-control form-control-sm fw-bold">
+                            </td>
+                            <td>
+                                <input type="text" name="track_duration" value="${track.duration}" class="form-control form-control-sm text-end">
+                            </td>
                         </tr>
                     `;
+                    trackContainer.insertAdjacentHTML('beforeend', row);
                 });
-
-                // UI Umschalten
-                document.getElementById('import-tracks-area').style.display = 'block';
-                document.getElementById('existing-tracks-area').style.opacity = '0.5';
-                document.getElementById('overwrite_tracks').value = 'yes';
-                
-                alert(`Discogs hat ${data.tracks.length} Tracks und ${data.images ? data.images.length : 0} Bilder gefunden!`);
             } else {
-                alert("Daten gefunden, aber keine Trackliste.");
+                trackSection.style.display = 'none';
             }
 
         } else {
-            alert(data.message || "Nichts gefunden.");
+            alert("Keine Daten gefunden. Bitte manuell eingeben.");
         }
-    } catch(e) {
-        console.error(e);
+    } catch (error) {
+        console.error('Fehler:', error);
+        alert("Verbindungsfehler zur API.");
+    } finally {
+        // Reset UI
+        btn.disabled = false;
         spinner.classList.add('d-none');
-        alert("Fehler bei der Verbindung.");
+        btnText.innerHTML = '<i class="bi bi-cloud-download me-2"></i>Daten abrufen';
     }
 }
 
-function selectImage(url) {
-    document.getElementById('remote_image_url').value = url;
-    document.getElementById('preview').src = url;
-    document.getElementById('preview').style.display = 'block';
-    document.getElementById('preview-placeholder').style.display = 'none';
-    
-    // Modal schließen falls offen
-    const modalEl = document.getElementById('imageModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if(modal) modal.hide();
-}
+// Enter-Taste im Barcode Feld
+document.getElementById('barcode').addEventListener('keypress', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault(); 
+        lookupBarcode();
+    }
+});
 </script>
 {% endblock %}
