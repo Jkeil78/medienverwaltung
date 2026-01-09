@@ -8,8 +8,9 @@
         </a>
         <div>
             {% if spotify_enabled and item.category in ['CD', 'Vinyl/LP'] %}
-            <a id="btn-spotify-link" href="#" target="_blank" class="btn btn-success" style="display:none;">
-                <i class="bi bi-spotify"></i> Play
+            <a id="btn-spotify-link" href="#" target="_blank" class="btn btn-outline-success disabled">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                Spotify...
             </a>
             {% endif %}
             <a href="{{ url_for('main.media_edit', item_id=item.id) }}" class="btn btn-primary">
@@ -230,11 +231,22 @@ document.addEventListener("DOMContentLoaded", function() {
 
                 const btn = document.getElementById('btn-spotify-link');
                 if(btn) {
+                    btn.className = "btn btn-success";
+                    btn.innerHTML = '<i class="bi bi-spotify"></i> Play';
                     btn.href = `https://open.spotify.com/album/${d.spotify_id}`;
-                    btn.style.display = 'inline-block';
                 }
+            } else {
+                // Nichts gefunden -> Button ausblenden
+                const btn = document.getElementById('btn-spotify-link');
+                if(btn) btn.style.display = 'none';
             }
+        }).catch(err => {
+            const btn = document.getElementById('btn-spotify-link');
+            if(btn) btn.style.display = 'none';
         });
+    } else {
+        const btn = document.getElementById('btn-spotify-link');
+        if(btn) btn.style.display = 'none';
     }
 });
 </script>
