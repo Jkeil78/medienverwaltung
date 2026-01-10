@@ -516,13 +516,21 @@ def logout():
 @login_required
 def settings():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
+    
+    active_tab = request.args.get('tab', 'api')
+    
     if request.method == 'POST':
         set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
         set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
         set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
         flash('Einstellungen gespeichert.', 'success')
-        return redirect(url_for('main.settings'))
-    return render_template('settings.html', 
+        return redirect(url_for('main.settings', tab='api'))
+        
+    return render_template('settings.html',
+                           active_tab=active_tab,
+                           users=User.query.all(),
+                           roles=Role.query.all(),
+                           locations=sorted(Location.query.all(), key=lambda x: x.full_path),
                            discogs_token=get_config_value('discogs_token', ''),
                            spotify_client_id=get_config_value('spotify_client_id', ''),
                            spotify_client_secret=get_config_value('spotify_client_secret', ''))
@@ -543,13 +551,6 @@ def change_password():
             return redirect(url_for('main.index'))
     return render_template('change_password.html')
 
-# -- ADMIN BACKUP --
-@main.route('/admin/backup')
-@login_required
-def admin_backup():
-    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    return render_template('admin_backup.html')
-
 @main.route('/admin/backup/download')
 @login_required
 def admin_backup_download():
@@ -559,7 +560,7 @@ def admin_backup_download():
         return send_file(path, as_attachment=True, download_name=fname)
     except Exception as e:
         flash(f'Error: {e}', 'error')
-        return redirect(url_for('main.admin_backup'))
+        return redirect(url_for('main.settings', tab='backup'))
 
 @main.route('/admin/restore', methods=['POST'])
 @login_required
@@ -577,9 +578,9 @@ def admin_restore():
             return redirect(url_for('main.index'))
         except Exception as e:
             flash(f'Error: {e}', 'error')
-            return redirect(url_for('main.admin_backup'))
+            return redirect(url_for('main.settings', tab='backup'))
     flash('Ungültige Datei.', 'error')
-    return redirect(url_for('main.admin_backup'))
+    return redirect(url_for('main.settings', tab='backup'))
 
 # -- MEDIA --
 @main.route('/media/<int:item_id>')
@@ -765,12 +766,6 @@ def lent_export():
     items = query.order_by(MediaItem.lent_to, MediaItem.lent_at).all()
     return render_template('lent_export.html', items=items, person=person, now=datetime.now())
 
-@main.route('/admin/users')
-@login_required
-def admin_users():
-    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    return render_template('admin_users.html', users=User.query.all(), roles=Role.query.all())
-
 @main.route('/admin/users/create', methods=['POST'])
 @login_required
 def user_create():
@@ -779,7 +774,7 @@ def user_create():
         u = User(username=request.form.get('username'), role_id=request.form.get('role_id'))
         u.set_password(request.form.get('password'))
         db.session.add(u); db.session.commit()
-    return redirect(url_for('main.admin_users'))
+    return redirect(url_for('main.settings', tab='users'))
 
 @main.route('/admin/users/delete/<int:user_id>')
 @login_required
@@ -787,13 +782,7 @@ def user_delete(user_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     u = User.query.get_or_404(user_id)
     if u.id != current_user.id: db.session.delete(u); db.session.commit()
-    return redirect(url_for('main.admin_users'))
-
-@main.route('/admin/locations')
-@login_required
-def admin_locations():
-    if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
-    return render_template('admin_locations.html', locations=sorted(Location.query.all(), key=lambda x: x.full_path))
+    return redirect(url_for('main.settings', tab='users'))
 
 @main.route('/admin/locations/edit/<int:loc_id>', methods=['GET', 'POST'])
 @login_required
@@ -808,7 +797,7 @@ def location_edit(loc_id):
             else: loc.parent_id = int(pid)
         else: loc.parent_id = None
         db.session.commit()
-        return redirect(url_for('main.admin_locations'))
+        return redirect(url_for('main.settings', tab='locations'))
     return render_template('location_edit.html', location=loc, all_locations=sorted(Location.query.filter(Location.id!=loc_id).all(), key=lambda x: x.full_path))
 
 @main.route('/admin/locations/create', methods=['POST'])
@@ -818,7 +807,7 @@ def location_create():
     pid = request.form.get('parent_id')
     db.session.add(Location(name=request.form.get('name'), parent_id=int(pid) if pid else None))
     db.session.commit()
-    return redirect(url_for('main.admin_locations'))
+    return redirect(url_for('main.settings', tab='locations'))
 
 @main.route('/admin/locations/delete/<int:loc_id>')
 @login_required
@@ -826,8 +815,8 @@ def location_delete(loc_id):
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     l = Location.query.get_or_404(loc_id)
     if not l.children and l.items.count() == 0: db.session.delete(l); db.session.commit()
-    return redirect(url_for('main.admin_locations'))
+    return redirect(url_for('main.settings', tab='locations'))
 
 @main.route('/admin')
 @login_required
-def admin_redirect(): return redirect(url_for('main.admin_users'))
+def admin_redirect(): return redirect(url_for('main.settings'))

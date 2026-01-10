@@ -3,47 +3,200 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0">System Einstellungen</h4>
+        <h3 class="fw-bold text-primary mb-4">
+            <i class="bi bi-gear-fill me-2"></i>Einstellungen & Verwaltung
+        </h3>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom">
+                <ul class="nav nav-tabs card-header-tabs" id="settingsTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'api' %}active{% endif %}" id="api-tab" data-bs-toggle="tab" data-bs-target="#api" type="button" role="tab">
+                            <i class="bi bi-cloud-check me-2"></i>Externe APIs
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'locations' %}active{% endif %}" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations" type="button" role="tab">
+                            <i class="bi bi-geo-alt me-2"></i>Standorte
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'users' %}active{% endif %}" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+                            <i class="bi bi-people me-2"></i>Benutzer
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link {% if active_tab == 'backup' %}active{% endif %}" id="backup-tab" data-bs-toggle="tab" data-bs-target="#backup" type="button" role="tab">
+                            <i class="bi bi-archive me-2"></i>Backup
+                        </button>
+                    </li>
+                </ul>
             </div>
-            <div class="card-body">
-                <form method="POST">
+            
+            <div class="card-body p-4">
+                <div class="tab-content" id="settingsTabContent">
                     
-                    <h5 class="mb-3">Externe APIs</h5>
-                    
-                    <div class="mb-3">
-                        <label for="discogs_token" class="form-label">Discogs Personal Access Token</label>
-                        <input type="text" class="form-control" id="discogs_token" name="discogs_token" 
-                               value="{{ discogs_token }}" placeholder="Token hier einfügen...">
-                        <div class="form-text">
-                            Benötigt, um Musik-Cover und Details von Discogs zu laden. 
-                            <a href="https://www.discogs.com/settings/developers" target="_blank">Token hier generieren</a>.
+                    <!-- TAB: APIs -->
+                    <div class="tab-pane fade {% if active_tab == 'api' %}show active{% endif %}" id="api" role="tabpanel">
+                        <form method="POST" action="{{ url_for('main.settings') }}">
+                            <h5 class="mb-3">Discogs (Musik-Metadaten)</h5>
+                            <div class="mb-3">
+                                <label for="discogs_token" class="form-label">Personal Access Token</label>
+                                <input type="text" class="form-control" id="discogs_token" name="discogs_token" 
+                                       value="{{ discogs_token }}" placeholder="Token hier einfügen...">
+                                <div class="form-text">
+                                    <a href="https://www.discogs.com/settings/developers" target="_blank">Token hier generieren</a>.
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            
+                            <h5 class="mb-3">Spotify (Player-Integration)</h5>
+                            <div class="mb-3">
+                                <label for="spotify_client_id" class="form-label">Client ID</label>
+                                <input type="text" class="form-control" id="spotify_client_id" name="spotify_client_id" value="{{ spotify_client_id }}">
+                            </div>
+                            <div class="mb-3">
+                                <label for="spotify_client_secret" class="form-label">Client Secret</label>
+                                <input type="password" class="form-control" id="spotify_client_secret" name="spotify_client_secret" value="{{ spotify_client_secret }}">
+                                <div class="form-text">
+                                    <a href="https://developer.spotify.com/dashboard/" target="_blank">App hier erstellen</a>.
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-2"></i>Speichern
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- TAB: STANDORTE -->
+                    <div class="tab-pane fade {% if active_tab == 'locations' %}show active{% endif %}" id="locations" role="tabpanel">
+                        <div class="row g-4">
+                            <div class="col-md-5 order-md-2">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3">Neuen Ort anlegen</h6>
+                                        <form method="POST" action="{{ url_for('main.location_create') }}">
+                                            <div class="mb-3">
+                                                <label class="form-label small text-muted">Name</label>
+                                                <input type="text" name="name" class="form-control" required placeholder="z.B. Regal A">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label small text-muted">Übergeordnet</label>
+                                                <select name="parent_id" class="form-select">
+                                                    <option value="">-- Keine (Hauptkategorie) --</option>
+                                                    {% for loc in locations %}
+                                                        <option value="{{ loc.id }}">{{ loc.full_path }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-success w-100">Anlegen</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-7 order-md-1">
+                                <div class="table-responsive border rounded">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light"><tr><th>Pfad</th><th class="text-end">Aktion</th></tr></thead>
+                                        <tbody>
+                                            {% for loc in locations %}
+                                            <tr>
+                                                <td>
+                                                    {% if loc.parent %}<i class="bi bi-arrow-return-right text-muted me-2"></i>{% else %}<i class="bi bi-folder-fill text-warning me-2"></i>{% endif %}
+                                                    {{ loc.full_path }}
+                                                </td>
+                                                <td class="text-end">
+                                                    {% if loc.name != 'Unsortiert' %}
+                                                        <a href="{{ url_for('main.location_edit', loc_id=loc.id) }}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
+                                                        <a href="{{ url_for('main.location_delete', loc_id=loc.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Löschen?')"><i class="bi bi-trash"></i></a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <hr>
-                    
-                    <h5 class="mb-3">Spotify Integration</h5>
-                    <div class="mb-3">
-                        <label for="spotify_client_id" class="form-label">Spotify Client ID</label>
-                        <input type="text" class="form-control" id="spotify_client_id" name="spotify_client_id" value="{{ spotify_client_id }}">
-                    </div>
-                    <div class="mb-3">
-                        <label for="spotify_client_secret" class="form-label">Spotify Client Secret</label>
-                        <input type="password" class="form-control" id="spotify_client_secret" name="spotify_client_secret" value="{{ spotify_client_secret }}">
-                        <div class="form-text">
-                            Benötigt für die Musik-Vorschau. <a href="https://developer.spotify.com/dashboard/" target="_blank">App hier erstellen</a>.
+                    <!-- TAB: BENUTZER -->
+                    <div class="tab-pane fade {% if active_tab == 'users' %}show active{% endif %}" id="users" role="tabpanel">
+                        <div class="row g-4">
+                            <div class="col-md-8">
+                                <div class="table-responsive border rounded">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="table-light"><tr><th class="ps-3">User</th><th>Rolle</th><th class="text-end pe-3">Aktion</th></tr></thead>
+                                        <tbody>
+                                            {% for user in users %}
+                                            <tr>
+                                                <td class="ps-3 fw-bold">{{ user.username }} {% if user.id == current_user.id %}<span class="badge bg-light text-dark border ms-1">Du</span>{% endif %}</td>
+                                                <td><span class="badge {% if user.role.name == 'Admin' %}bg-danger-subtle text-danger{% else %}bg-info-subtle text-info-emphasis{% endif %}">{{ user.role.name }}</span></td>
+                                                <td class="text-end pe-3">
+                                                    {% if user.id != current_user.id %}
+                                                        <a href="{{ url_for('main.user_delete', user_id=user.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Löschen?')"><i class="bi bi-trash"></i></a>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3">Neuen Benutzer</h6>
+                                        <form action="{{ url_for('main.user_create') }}" method="POST">
+                                            <div class="mb-2">
+                                                <input type="text" name="username" class="form-control form-control-sm" required placeholder="Name">
+                                            </div>
+                                            <div class="mb-2">
+                                                <input type="password" name="password" class="form-control form-control-sm" required placeholder="Passwort">
+                                            </div>
+                                            <div class="mb-3">
+                                                <select name="role_id" class="form-select form-select-sm">
+                                                    {% for role in roles %}
+                                                        <option value="{{ role.id }}">{{ role.name }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-sm btn-success w-100">Erstellen</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div class="alert alert-info mt-3 py-2 small border-0">
+                                    <i class="bi bi-info-circle me-1"></i> Passwörter werden gehasht gespeichert.
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <hr>
+                    <!-- TAB: BACKUP -->
+                    <div class="tab-pane fade {% if active_tab == 'backup' %}show active{% endif %}" id="backup" role="tabpanel">
+                        <div class="alert alert-info border-0 shadow-sm">
+                            <h5 class="alert-heading h6 fw-bold"><i class="bi bi-download me-2"></i>Backup erstellen</h5>
+                            <p class="mb-2 small">Lädt die Datenbank und alle Bilder als ZIP herunter.</p>
+                            <a href="{{ url_for('main.admin_backup_download') }}" class="btn btn-sm btn-primary">Download starten</a>
+                        </div>
 
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save"></i> Speichern
-                    </button>
-                    <a href="{{ url_for('main.index') }}" class="btn btn-secondary">Abbrechen</a>
-                </form>
+                        <hr class="my-4">
+
+                        <div class="alert alert-warning border-0 shadow-sm">
+                            <h5 class="alert-heading h6 fw-bold"><i class="bi bi-upload me-2"></i>Wiederherstellen</h5>
+                            <p class="mb-3 small">Achtung: Überschreibt alle aktuellen Daten!</p>
+                            <form action="{{ url_for('main.admin_restore') }}" method="POST" enctype="multipart/form-data" class="d-flex gap-2">
+                                <input class="form-control form-control-sm" type="file" name="backup_file" accept=".zip" required>
+                                <button type="submit" class="btn btn-sm btn-danger text-nowrap" onclick="return confirm('Sicher? Daten werden überschrieben!')">Restore</button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
             </div>
         </div>
     </div>

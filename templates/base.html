@@ -146,27 +146,9 @@
                         <div class="sidebar-heading">Verwaltung</div>
                         
                         <li class="nav-item">
-                            <a class="nav-link {% if 'admin_locations' in request.endpoint %}active{% endif %}" href="{{ url_for('main.admin_locations') }}">
-                                <i class="bi bi-geo-alt"></i>
-                                Standorte
-                            </a>
-                        </li>
-                        <li class="nav-item">
                             <a class="nav-link {% if 'settings' in request.endpoint %}active{% endif %}" href="{{ url_for('main.settings') }}">
                                 <i class="bi bi-gear"></i>
                                 Einstellungen
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if 'backup' in request.endpoint %}active{% endif %}" href="{{ url_for('main.admin_backup') }}">
-                                <i class="bi bi-archive"></i>
-                                Backup
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if 'admin_users' in request.endpoint %}active{% endif %}" href="{{ url_for('main.admin_users') }}">
-                                <i class="bi bi-people"></i>
-                                Benutzer
                             </a>
                         </li>
                     {% endif %}
