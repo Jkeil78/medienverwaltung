@@ -117,12 +117,34 @@
 </div>
 
 {% if items %}
+    <form action="{{ url_for('main.bulk_move') }}" method="POST">
+        
+        <div class="card mb-3 shadow-sm border-0 bg-light">
+            <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="selectAll">
+                    <label class="form-check-label small fw-bold text-uppercase text-muted" for="selectAll">Alle</label>
+                </div>
+                <div class="vr mx-2"></div>
+                <select name="target_location_id" class="form-select form-select-sm" style="max-width: 300px;" required>
+                    <option value="">-- Markierte verschieben nach... --</option>
+                    {% for loc in locations %}
+                        <option value="{{ loc.id }}">{{ loc.full_path }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                    <i class="bi bi-arrow-right-circle me-1"></i>Verschieben
+                </button>
+            </div>
+        </div>
+
     <div id="view-table">
         <div class="card shadow-sm border-0">
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
+                            <th style="width: 30px;"></th>
                             <th style="width: 60px;">Bild</th>
                             <th>Titel / Info</th>
                             <th class="d-none d-md-table-cell">Kategorie</th> 
@@ -133,6 +155,9 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
+                            <td>
+                                <input type="checkbox" name="item_ids" value="{{ item.id }}" class="form-check-input item-checkbox">
+                            </td>
                             <td>
                                 <div class="ratio ratio-1x1 rounded overflow-hidden" style="width: 40px;">
                                     {% if item.image_filename %}
@@ -178,9 +203,10 @@
                 <div class="card h-100 shadow-sm border-0 position-relative hover-shadow transition-all">
                     
                     <div class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between pointer-events-none" style="z-index: 5;">
-                        <span class="badge bg-white text-dark shadow-sm border opacity-75">
-                            {{ item.category }}
-                        </span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="checkbox" name="item_ids" value="{{ item.id }}" class="form-check-input item-checkbox shadow-sm mt-0" style="pointer-events: auto; cursor: pointer;">
+                            <span class="badge bg-white text-dark shadow-sm border opacity-75">{{ item.category }}</span>
+                        </div>
                         {% if item.lent_to %}
                             <span class="badge bg-warning text-dark shadow-sm">Verliehen</span>
                         {% endif %}
@@ -209,6 +235,7 @@
             {% endfor %}
         </div>
     </div>
+    </form>
 
     {% if pagination and pagination.pages > 1 %}
     <div class="d-flex justify-content-center mt-5">
@@ -273,6 +300,13 @@
     document.addEventListener('DOMContentLoaded', () => {
         const savedMode = localStorage.getItem('viewMode') || 'table';
         setView(savedMode);
+
+        const selectAll = document.getElementById('selectAll');
+        if(selectAll) {
+            selectAll.addEventListener('change', function() {
+                document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
+            });
+        }
     });
 </script>
 

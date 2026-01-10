@@ -689,6 +689,36 @@ def media_delete(item_id):
     db.session.commit()
     return redirect(url_for('main.index'))
 
+@main.route('/media/bulk_move', methods=['POST'])
+@login_required
+def bulk_move():
+    item_ids = request.form.getlist('item_ids')
+    target_location_id = request.form.get('target_location_id')
+    
+    if not item_ids:
+        flash('Keine Items ausgewählt.', 'warning')
+        return redirect(url_for('main.index'))
+        
+    if not target_location_id:
+        flash('Kein Zielort ausgewählt.', 'warning')
+        return redirect(url_for('main.index'))
+
+    try:
+        target_loc = Location.query.get(int(target_location_id))
+        if not target_loc:
+            flash('Ungültiger Zielort.', 'error')
+            return redirect(url_for('main.index'))
+            
+        count = MediaItem.query.filter(MediaItem.id.in_(item_ids)).update({MediaItem.location_id: target_loc.id}, synchronize_session=False)
+        db.session.commit()
+        flash(f'{count} Items erfolgreich nach "{target_loc.full_path}" verschoben.', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Fehler beim Verschieben: {str(e)}', 'error')
+        
+    return redirect(url_for('main.index'))
+
 @main.route('/media/<int:item_id>/add_track', methods=['POST'])
 @login_required
 def track_add(item_id):
