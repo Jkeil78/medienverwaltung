@@ -1,4 +1,4 @@
-# Medienverwaltung
+# Medienverwaltung v1.6.0
 
 Eine webbasierte Anwendung zur Verwaltung Ihrer physischen Mediensammlung (CDs, Vinyl, Bücher, Filme, Videospiele). 
 Das System bietet Integrationen zu Discogs, Spotify und Google Books, um Metadaten und Cover automatisch zu laden.
@@ -11,7 +11,7 @@ Das System bietet Integrationen zu Discogs, Spotify und Google Books, um Metadat
     *   **Bücher**: Suche via Google Books, OpenLibrary und Amazon (Cover, Autor, Beschreibung).
 *   **Spotify Integration**: Vorschau-Player für CDs und Vinyls direkt in der Detailansicht.
 *   **Standort-Verwaltung**: Hierarchische Lagerorte (z.B. Wohnzimmer > Regal A > Fach 1).
-*   **Verleih-Status**: Markieren von verliehenen Gegenständen.
+*   **Verleih-Status**: Markieren von verliehenen Gegenständen inkl. PDF-Export und Druckansicht.
 *   **QR-Codes**: Generierung von QR-Codes für jedes Item zum schnellen Scannen.
 *   **Backup & Restore**: Vollständige Sicherung der Datenbank und Bilder als ZIP-Datei.
 *   **Benutzerverwaltung**: Rollenbasierter Zugriff (Admin/User).
@@ -92,3 +92,16 @@ Um alle Funktionen nutzen zu können, sollten API-Schlüssel in den **Einstellun
 ## Backup
 
 Im Admin-Bereich können Sie jederzeit ein vollständiges Backup herunterladen. Dieses enthält die SQLite-Datenbank sowie alle Bilder. Zum Wiederherstellen laden Sie die ZIP-Datei einfach wieder hoch.
+
+## Changelog
+
+### v1.6.0
+*   **Feature:** Verleih-Übersicht (`/lent`) mit PDF-Export Funktion für einzelne Personen oder alle Items.
+*   **Feature:** Erweiterte Spotify-Integration (Play-Button, intelligente Suche via `difflib` für bessere Trefferquote).
+*   **Feature:** Globale Suche findet nun auch Track-Titel und Ausleiher-Namen.
+*   **UX:** Optimierte mobile Ansicht für die Erfassungsmaske (kompakteres Layout).
+*   **UX:** "Smart Location": Der zuletzt gewählte Standort wird bei der Erfassung neuer Items gemerkt.
+
+### v1.5.0
+*   Initiale Docker-Version mit Discogs & Google Books Support.
+*   Backup/Restore System implementiert.
