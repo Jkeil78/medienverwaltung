@@ -76,6 +76,7 @@ def get_spotify_access_token():
     client_secret = get_config_value('spotify_client_secret')
     
     if not client_id or not client_secret:
+        print(f"DEBUG: Spotify Credentials missing in DB. ID set: {bool(client_id)}, Secret set: {bool(client_secret)}")
         return None
 
     # Check if we have a valid token
@@ -104,6 +105,8 @@ def get_spotify_access_token():
             set_config_value('spotify_access_token', new_token)
             set_config_value('spotify_token_expiry', str(time.time() + expires_in - 60))
             return new_token
+        else:
+            print(f"DEBUG: Spotify Auth Failed. Status: {res.status_code}, Response: {res.text}")
     except Exception as e:
         print(f"Spotify Auth Error: {e}")
     return None
