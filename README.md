@@ -1,4 +1,4 @@
-# Medienverwaltung v1.6.0
+# Medienverwaltung v1.7.0
 
 Eine webbasierte Anwendung zur Verwaltung Ihrer physischen Mediensammlung (CDs, Vinyl, Bücher, Filme, Videospiele). 
 Das System bietet Integrationen zu Discogs, Spotify und Google Books, um Metadaten und Cover automatisch zu laden.
@@ -94,6 +94,13 @@ Um alle Funktionen nutzen zu können, sollten API-Schlüssel in den **Einstellun
 Im Admin-Bereich können Sie jederzeit ein vollständiges Backup herunterladen. Dieses enthält die SQLite-Datenbank sowie alle Bilder. Zum Wiederherstellen laden Sie die ZIP-Datei einfach wieder hoch.
 
 ## Changelog
+
+### v1.7.0
+*   **Feature:** Zentrale Einstellungsseite (`/settings`) vereint API-, Benutzer-, Standort- und Backup-Verwaltung.
+*   **Feature:** Massen-Verschieben von Medien in andere Standorte (Bulk Move).
+*   **Security:** Passwörter werden nun sicher gehasht (PBKDF2/SHA256). Automatische Migration beim Login.
+*   **Security:** Löschen und Verschieben von Items ist nun auf Administratoren beschränkt.
+*   **UI:** Neues SVG-Logo und aufgeräumte Menüleiste.
 
 ### v1.6.0
 *   **Feature:** Verleih-Übersicht (`/lent`) mit PDF-Export Funktion für einzelne Personen oder alle Items.
