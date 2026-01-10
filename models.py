@@ -24,7 +24,20 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        # 1. Prüfen, ob es bereits ein sicherer Hash ist
+        try:
+            if check_password_hash(self.password_hash, password):
+                return True
+        except (ValueError, TypeError):
+            pass
+
+        # 2. Migration: Prüfen auf altes Format (hier Annahme: Klartext/einfach)
+        if self.password_hash == password:
+            self.set_password(password)
+            db.session.commit()
+            return True
+            
+        return False
     
     def has_role(self, role_name):
         if self.role is None:
