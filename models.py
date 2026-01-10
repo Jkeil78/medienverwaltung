@@ -24,14 +24,14 @@ class User(UserMixin, db.Model):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
-        # 1. Prüfen, ob es bereits ein sicherer Hash ist
+        # 1. Check if it is already a secure hash
         try:
             if check_password_hash(self.password_hash, password):
                 return True
         except (ValueError, TypeError):
             pass
 
-        # 2. Migration: Prüfen auf altes Format (hier Annahme: Klartext/einfach)
+        # 2. Migration: Check for old format (assuming plaintext/simple here)
         if self.password_hash == password:
             self.set_password(password)
             db.session.commit()
@@ -51,13 +51,13 @@ def load_user(user_id):
 
 class AppSetting(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(50), unique=True, nullable=False) # z.B. 'discogs_token'
-    value = db.Column(db.String(255), nullable=True)          # z.B. 'a1b2c3...'
+    key = db.Column(db.String(50), unique=True, nullable=False) # e.g. 'discogs_token'
+    value = db.Column(db.String(255), nullable=True)          # e.g. 'a1b2c3...'
 
     def __repr__(self):
         return f'<AppSetting {self.key}>'
 
-# -- MEDIEN MODELLE --
+# -- MEDIA MODELS --
 
 class Location(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -70,13 +70,13 @@ class Location(db.Model):
         return f'<Location {self.name}>'
     @property
     def full_path(self):
-        """Gibt den kompletten Pfad zurück: 'Opa > Vater > Kind'"""
+        """Returns the full path: 'Grandpa > Father > Child'"""
         chain = []
         current = self
         while current:
             chain.insert(0, current.name)
             current = current.parent
-            # Sicherheitsbremse gegen Endlosschleifen (falls A Parent von B und B Parent von A ist)
+            # Safety brake against infinite loops (if A is parent of B and B is parent of A)
             if len(chain) > 20: 
                 break 
         return " > ".join(chain)

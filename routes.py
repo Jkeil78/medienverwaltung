@@ -48,15 +48,15 @@ def save_image(file):
     return None
 
 def download_remote_image(url):
-    # Einfacher Check: Amazon liefert manchmal 1x1 Pixel Gifs als "nicht gefunden"
-    # Wir laden erst, wenn wir sicher sind, dass es Bilddaten sind.
+    # Simple check: Amazon sometimes returns 1x1 pixel gifs as "not found"
+    # We only download if we are sure it is image data.
     print(f"DEBUG: Starte Download von {url}")
     try:
         headers = {'User-Agent': 'HomeInventoryApp/1.0'}
         response = requests.get(url, headers=headers, stream=True, timeout=10)
         
         if response.status_code == 200:
-            # Check Content-Length (Amazon 1x1 Pixel ist ca 43 bytes)
+            # Check Content-Length (Amazon 1x1 Pixel is approx 43 bytes)
             if len(response.content) < 100:
                 print("DEBUG: Bild zu klein (wahrscheinlich Platzhalter), verwerfe.")
                 return None
@@ -132,7 +132,7 @@ def generate_inventory_number():
     unique = str(uuid.uuid4())[:8].upper()
     return f"INV-{year}-{unique}"
 
-# -- API: DISCOGS TEXT SUCHE --
+# -- API: DISCOGS TEXT SEARCH --
 @main.route('/api/search_discogs')
 @login_required
 def api_search_discogs():
@@ -185,7 +185,7 @@ def api_search_discogs():
 
     return jsonify(data)
 
-# -- API: SPOTIFY SUCHE --
+# -- API: SPOTIFY SEARCH --
 @main.route('/api/spotify/search')
 @login_required
 def api_spotify_search():
@@ -204,7 +204,7 @@ def api_spotify_search():
         headers = {"Authorization": f"Bearer {token}"}
         
         def do_search(q_param):
-            # market=DE verbessert Trefferquote für deutsche Nutzer und filtert nicht abspielbare Inhalte
+            # market=DE improves hit rate for German users and filters unplayable content
             print(f"DEBUG: Spotify Search Q='{q_param}'")
             return requests.get("https://api.spotify.com/v1/search", 
                                 headers=headers, 
@@ -221,7 +221,7 @@ def api_spotify_search():
                 sp_artists = [a.get('name', '').lower() for a in item.get('artists', [])]
                 artist_match = False
                 for sp_a in sp_artists:
-                    # Exakter Substring oder hohe Ähnlichkeit (Ratio > 0.6)
+                    # Exact substring or high similarity (Ratio > 0.6)
                     if target_artist in sp_a or sp_a in target_artist:
                         artist_match = True
                         break
@@ -240,7 +240,7 @@ def api_spotify_search():
             
             return None
 
-        # Versuch 1: Strikt mit Feldern
+        # Attempt 1: Strict with fields
         res = do_search(f'artist:"{artist}" album:"{title}"')
         if res.status_code == 200:
             items = res.json().get("albums", {}).get("items", [])
@@ -248,7 +248,7 @@ def api_spotify_search():
             if match_id:
                 return jsonify({"success": True, "spotify_id": match_id})
         
-        # Versuch 2: Locker (Einfach String concat) - findet auch "Remastered" etc.
+        # Attempt 2: Loose (Simple string concat) - also finds "Remastered" etc.
         res = do_search(f"{artist} {title}")
         if res.status_code == 200:
             items = res.json().get("albums", {}).get("items", [])
@@ -261,7 +261,7 @@ def api_spotify_search():
         
     return jsonify({"success": False, "message": "Not found"})
 
-# -- API: BARCODE LOOKUP (Mit Amazon Fallback) --
+# -- API: BARCODE LOOKUP (With Amazon Fallback) --
 @main.route('/api/lookup/<barcode>')
 @login_required
 def api_lookup(barcode):
@@ -291,7 +291,7 @@ def api_lookup(barcode):
             res = requests.get(f"https://openlibrary.org/api/books?bibkeys=ISBN:{clean_isbn}&format=json&jscmd=data", timeout=5)
             if res.status_code == 200 and res.json():
                 bk = list(res.json().values())[0]
-                if not data["success"]: # Metadaten nur übernehmen wenn Google nichts hatte
+                if not data["success"]: # Only adopt metadata if Google had nothing
                     data.update({
                         "success": True, "title": bk.get("title", ""), 
                         "author": ", ".join([a["name"] for a in bk.get("authors", [])]),
@@ -300,19 +300,19 @@ def api_lookup(barcode):
                     match = re.search(r'\d{4}', bk.get("publish_date", ""))
                     if match: data["year"] = match.group(0)
 
-                # Bild holen
+                # Get image
                 if "cover" in bk: data["image_url"] = bk["cover"].get("large", "")
         except: pass
 
-    # 3. Amazon Direct Image Fallback (NEU!)
-    # Funktioniert oft für deutsche Bücher, wenn Google/OpenLibrary kein Cover haben
+    # 3. Amazon Direct Image Fallback (NEW!)
+    # Often works for German books if Google/OpenLibrary have no cover
     if data["success"] and not data["image_url"]:
         try:
-            # Amazon Bild-URL Muster
+            # Amazon image URL pattern
             amazon_url = f"https://images-na.ssl-images-amazon.com/images/P/{clean_isbn}.01.LZZZZZZZ.jpg"
             
-            # Wir machen einen HEAD request um zu prüfen, ob das Bild existiert
-            # und größer als 1x1 Pixel ist (Amazon liefert 43 bytes für "nicht gefunden")
+            # We do a HEAD request to check if the image exists
+            # and is larger than 1x1 pixel (Amazon returns 43 bytes for "not found")
             check = requests.get(amazon_url, timeout=3)
             if check.status_code == 200 and len(check.content) > 100:
                 print(f"DEBUG: Amazon Cover gefunden für {clean_isbn}")
@@ -320,7 +320,7 @@ def api_lookup(barcode):
         except Exception as e:
             print(f"DEBUG: Amazon Fallback Fehler: {e}")
 
-    # 4. Discogs (für Musik)
+    # 4. Discogs (for music)
     token = get_config_value('discogs_token')
     if token and (not data["success"] or data["category"] == ""): 
         try:
@@ -330,7 +330,7 @@ def api_lookup(barcode):
                 it = res.json()["results"][0]
                 data["success"] = True
                 
-                # Titel/Autor Trennung bei Discogs oft "Artist - Title"
+                # Title/Author separation at Discogs often "Artist - Title"
                 full_title = it.get("title", "")
                 if " - " in full_title and not data["author"]:
                     parts = full_title.split(" - ", 1)
@@ -341,17 +341,17 @@ def api_lookup(barcode):
                 
                 if not data["year"]: data["year"] = it.get("year", "")
                 
-                # Wenn wir noch kein Bild haben (oder Amazon/Google fehlschlug)
+                # If we don't have an image yet (or Amazon/Google failed)
                 if not data["image_url"]:
                     data["image_url"] = it.get("cover_image", "")
                 
-                # Kategorie ermitteln
+                # Determine category
                 fmts = it.get("format", [])
                 if "Vinyl" in fmts: data["category"] = "Vinyl/LP"
                 elif "CD" in fmts: data["category"] = "CD"
                 elif "DVD" in fmts: data["category"] = "Film (DVD/BluRay)"
 
-                # Tracks laden
+                # Load tracks
                 if it.get("resource_url"):
                     det = requests.get(it["resource_url"], headers=h, timeout=5).json()
                     for t in det.get("tracklist", []):
@@ -373,7 +373,7 @@ def qrcode_image(inventory_number):
     fp.seek(0)
     return send_file(fp, mimetype='image/png')
 
-# -- ROUTEN --
+# -- ROUTES --
 
 @main.route('/')
 def index():
@@ -385,31 +385,31 @@ def index():
         return redirect(url_for('main.index'))
 
     # 2. SESSION STATE MANAGEMENT
-    # 'limit' auch speichern
+    # 'limit' also save
     params = ['q', 'category', 'location', 'lent', 'sort_field', 'sort_order', 'limit']
     
-    # Prüfen, ob neue Parameter in der URL sind
+    # Check if new parameters are in URL
     active_args = {k: request.args.get(k) for k in params if request.args.get(k) is not None}
 
     if active_args:
-        # Neuer Filter aktiv -> Speichern
+        # New filter active -> Save
         session['filter_state'] = active_args
     elif 'filter_state' in session and not request.args:
-        # Keine URL-Params, aber Session vorhanden -> Restore
+        # No URL params, but session exists -> Restore
         return redirect(url_for('main.index', **session['filter_state']))
 
-    # 3. WERTE AUSLESEN (Defaults setzen)
+    # 3. READ VALUES (Set defaults)
     q_str = request.args.get('q', '')
     cat = request.args.get('category', '')
     loc = request.args.get('location', '')
     lent = request.args.get('lent', '') # ''=Alle, 'yes'=Verliehen, 'no'=Verfügbar
     limit = request.args.get('limit', '20')
     
-    # Seite auslesen (nicht in Session speichern, da man sonst immer auf Seite X landet)
+    # Read page (do not save in session, otherwise you always land on page X)
     page = request.args.get('page', 1, type=int)
     
-    sort_field = request.args.get('sort_field', 'added') # default: Hinzugefügt
-    sort_order = request.args.get('sort_order', 'desc')  # default: Absteigend
+    sort_field = request.args.get('sort_field', 'added') # default: Added
+    sort_order = request.args.get('sort_order', 'desc')  # default: Descending
 
     query = MediaItem.query
 
@@ -421,8 +421,8 @@ def index():
             MediaItem.author_artist.ilike(s),
             MediaItem.inventory_number.ilike(s),
             MediaItem.barcode.ilike(s),
-            MediaItem.lent_to.ilike(s), # Auch nach Entleiher suchen!
-            MediaItem.tracks.any(Track.title.ilike(s)) # Suche in Tracks
+            MediaItem.lent_to.ilike(s), # Also search for borrower!
+            MediaItem.tracks.any(Track.title.ilike(s)) # Search in tracks
         ))
     
     if cat: 
@@ -431,13 +431,13 @@ def index():
     if loc: 
         query = query.filter(MediaItem.location_id == int(loc))
 
-    # Verleih-Status Filter
+    # Rental status filter
     if lent == 'yes':
         query = query.filter(MediaItem.lent_to != None)
     elif lent == 'no':
         query = query.filter(MediaItem.lent_to == None)
 
-    # -- FLEXIBLE SORTIERUNG MIT KASKADIERUNG --
+    # -- FLEXIBLE SORTING WITH CASCADING --
     primary_sort = None
     secondary_sorts = []
 
@@ -454,7 +454,7 @@ def index():
         primary_sort = MediaItem.id
         secondary_sorts = []
 
-    # Richtung anwenden
+    # Apply direction
     if sort_order == 'asc':
         query = query.order_by(primary_sort.asc(), *secondary_sorts)
     else:
@@ -472,19 +472,19 @@ def index():
         except ValueError:
             per_page = 20
         
-        # SQLAlchemy Pagination nutzen
+        # Use SQLAlchemy Pagination
         pagination = query.paginate(page=page, per_page=per_page, error_out=False)
         items = pagination.items
 
     locations = sorted(Location.query.all(), key=lambda x: x.full_path)
     categories = ["Buch", "Film (DVD/BluRay)", "CD", "Vinyl/LP", "Videospiel", "Sonstiges"]
 
-    # Filter-Status für Template
+    # Filter status for template
     current_filters = {
         'q': q_str, 'category': cat, 'location': loc, 'lent': lent,
         'sort_field': sort_field, 'sort_order': sort_order, 'limit': limit
     }
-    # Helper: Checken ob Filter aktiv sind (für den Reset Button)
+    # Helper: Check if filters are active (for the reset button)
     filter_active = any(x for x in [q_str, cat, loc, lent] if x) or sort_field != 'added' or limit != '20'
 
     return render_template('index.html', 
@@ -594,18 +594,18 @@ def media_detail(item_id):
 @login_required
 def media_create():
     if request.method == 'POST':
-        # Bildverarbeitung
+        # Image processing
         img = request.files.get('image')
         url = request.form.get('remote_image_url')
         fn = None
         if img and img.filename:
             fn = save_image(img)
         elif url and url.strip():
-            fn = download_remote_image(url) # Hier greift jetzt auch die Amazon 1x1 Prüfung
+            fn = download_remote_image(url) # Amazon 1x1 check also applies here
         
         ry = request.form.get('release_year')
         
-        # Standort merken (für Massenerfassung im gleichen Raum)
+        # Remember location (for bulk entry in the same room)
         loc_id = int(request.form.get('location_id') or 1)
         session['last_location_id'] = loc_id
 
@@ -664,7 +664,7 @@ def media_edit(item_id):
         if img and img.filename: item.image_filename = save_image(img)
         elif url and url != "": item.image_filename = download_remote_image(url)
 
-        # Tracks überschreiben
+        # Overwrite tracks
         if request.form.get('overwrite_tracks') == 'yes':
             Track.query.filter_by(media_item_id=item.id).delete()
             titles = request.form.getlist('track_title')
@@ -745,13 +745,13 @@ def track_delete(track_id):
     db.session.commit()
     return redirect(url_for('main.media_detail', item_id=mid))
 
-# -- VERLEIH ÜBERSICHT --
+# -- LENT OVERVIEW --
 @main.route('/lent')
 @login_required
 def lent_overview():
-    # Alle verliehenen Items laden
+    # Load all lent items
     items = MediaItem.query.filter(MediaItem.lent_to != None).order_by(MediaItem.lent_to, MediaItem.lent_at).all()
-    # Liste aller Personen erstellen, die etwas ausgeliehen haben (für das Dropdown)
+    # Create list of all persons who have borrowed something (for the dropdown)
     borrowers = sorted(list(set([i.lent_to for i in items if i.lent_to])))
     return render_template('lent_items.html', items=items, borrowers=borrowers)
 
