@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="h3 mb-0"><i class="bi bi-person-exclamation"></i> Verliehene Medien</h2>
+        
+        <div class="d-flex gap-2">
+            <!-- Export für Alle -->
+            <a href="{{ url_for('main.lent_export') }}" target="_blank" class="btn btn-outline-secondary">
+                <i class="bi bi-file-earmark-pdf"></i> PDF (Alle)
+            </a>
+
+            <!-- Export für spezifische Person -->
+            {% if borrowers %}
+            <div class="dropdown">
+                <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-file-earmark-person"></i> PDF für Person...
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
+                    {% for person in borrowers %}
+                    <li>
+                        <a class="dropdown-item" href="{{ url_for('main.lent_export', person=person) }}" target="_blank">
+                            {{ person }}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Titel</th>
+                            <th>Kategorie</th>
+                            <th>Verliehen an</th>
+                            <th>Seit</th>
+                            <th class="text-end">Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr>
+                            <td>
+                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold">
+                                    {{ item.title }}
+                                </a>
+                                <div class="small text-muted">{{ item.author_artist }}</div>
+                            </td>
+                            <td><span class="badge bg-secondary rounded-pill">{{ item.category }}</span></td>
+                            <td>
+                                <span class="fw-bold text-primary">{{ item.lent_to }}</span>
+                            </td>
+                            <td>
+                                {% if item.lent_at %}
+                                    {{ item.lent_at.strftime('%d.%m.%Y') }}
+                                    <small class="text-muted">({{ item.lent_at.strftime('%H:%M') }})</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('main.media_edit', item_id=item.id) }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i></a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Aktuell sind keine Medien verliehen.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Verleihliste {% if person %}- {{ person }}{% endif %}</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; color: #333; }
+        h1 { border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #f8f9fa; font-weight: bold; }
+        .meta { margin-bottom: 40px; font-size: 0.9em; color: #666; }
+        .signature-box { margin-top: 60px; display: flex; justify-content: space-between; }
+        .sig-line { border-top: 1px solid #333; width: 40%; padding-top: 5px; font-size: 0.8em; }
+        
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="margin-bottom: 20px; padding: 10px; background: #eee; border: 1px solid #ccc;">
+        <strong>Hinweis:</strong> Diese Seite öffnet automatisch den Druckdialog. Wählen Sie dort "Als PDF speichern".
+        <button onclick="window.print()">Drucken / PDF</button>
+    </div>
+
+    <h1>Verleihliste</h1>
+
+    <div class="meta">
+        <p><strong>Erstellt am:</strong> {{ now.strftime('%d.%m.%Y um %H:%M Uhr') }}</p>
+        {% if person %}
+        <p><strong>Ausleiher:</strong> {{ person }}</p>
+        {% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Titel</th>
+                <th>Künstler / Autor</th>
+                <th>Format</th>
+                {% if not person %}<th>Verliehen an</th>{% endif %}
+                <th>Ausgeliehen am</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.title }}</td>
+                <td>{{ item.author_artist or '-' }}</td>
+                <td>{{ item.category }}</td>
+                {% if not person %}<td>{{ item.lent_to }}</td>{% endif %}
+                <td>
+                    {% if item.lent_at %}
+                        {{ item.lent_at.strftime('%d.%m.%Y') }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="signature-box">
+        <div class="sig-line">Unterschrift Verleiher</div>
+        <div class="sig-line">Unterschrift Ausleiher</div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

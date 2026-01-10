@@ -700,6 +700,27 @@ def track_delete(track_id):
     db.session.commit()
     return redirect(url_for('main.media_detail', item_id=mid))
 
+# -- VERLEIH ÜBERSICHT --
+@main.route('/lent')
+@login_required
+def lent_overview():
+    # Alle verliehenen Items laden
+    items = MediaItem.query.filter(MediaItem.lent_to != None).order_by(MediaItem.lent_to, MediaItem.lent_at).all()
+    # Liste aller Personen erstellen, die etwas ausgeliehen haben (für das Dropdown)
+    borrowers = sorted(list(set([i.lent_to for i in items if i.lent_to])))
+    return render_template('lent_items.html', items=items, borrowers=borrowers)
+
+@main.route('/lent/export')
+@login_required
+def lent_export():
+    person = request.args.get('person')
+    query = MediaItem.query.filter(MediaItem.lent_to != None)
+    if person:
+        query = query.filter(MediaItem.lent_to == person)
+    
+    items = query.order_by(MediaItem.lent_to, MediaItem.lent_at).all()
+    return render_template('lent_export.html', items=items, person=person, now=datetime.now())
+
 @main.route('/admin/users')
 @login_required
 def admin_users():
