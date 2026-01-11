@@ -370,6 +370,72 @@ def api_lookup(barcode):
                             data["tracks"].append({"position": t.get("position"), "title": t.get("title"), "duration": t.get("duration")})
         except: pass
 
+    # 5. TMDB (Movies/TV)
+    tmdb_key = get_config_value('tmdb_api_key')
+    if tmdb_key and (not data["success"] or data["category"] == ""):
+        try:
+            url = f"https://api.themoviedb.org/3/find/{barcode}?api_key={tmdb_key}&external_source=ean"
+            res = requests.get(url, timeout=5)
+            if res.status_code == 200:
+                js = res.json()
+                results = js.get("movie_results", []) + js.get("tv_results", [])
+                if results:
+                    item = results[0]
+                    data["success"] = True
+                    data["title"] = item.get("title") or item.get("name")
+                    data["description"] = item.get("overview")
+                    data["year"] = (item.get("release_date") or item.get("first_air_date") or "")[:4]
+                    poster = item.get("poster_path")
+                    if poster:
+                        data["image_url"] = f"https://image.tmdb.org/t/p/w500{poster}"
+                    data["category"] = "Film (DVD/BluRay)"
+                    
+                    # Fetch Director (Crew)
+                    media_type = "movie" if "title" in item else "tv"
+                    if media_type == "movie":
+                        mid = item.get("id")
+                        c_res = requests.get(f"https://api.themoviedb.org/3/movie/{mid}/credits?api_key={tmdb_key}", timeout=5)
+                        if c_res.status_code == 200:
+                            crew = c_res.json().get("crew", [])
+                            directors = [c["name"] for c in crew if c["job"] == "Director"]
+                            if directors: data["author"] = ", ".join(directors[:3])
+        except Exception as e:
+            print(f"TMDB Error: {e}")
+
+    # 6. OFDb (Fallback for German titles)
+    if not data["success"] or data["category"] == "":
+        try:
+            # Search OFDb by EAN (Parsing Search Result)
+            url = f"https://ssl.ofdb.de/view.php?page=suchergebnis&Kat=EAN&SText={barcode}"
+            res = requests.get(url, timeout=5)
+            if res.status_code == 200:
+                content = res.content.decode('iso-8859-1', errors='ignore')
+                # Regex to find the link to the version (Fassung)
+                match = re.search(r'href="view\.php\?page=fassung&amp;fid=\d+&amp;vid=\d+">([^<]+)</a>', content)
+                if match:
+                    data["success"] = True
+                    data["title"] = match.group(1).strip()
+                    data["category"] = "Film (DVD/BluRay)"
+                    
+                    # Fetch details for Image & Director
+                    detail_link = match.group(0).split('"')[1].replace("&amp;", "&")
+                    d_res = requests.get(f"https://ssl.ofdb.de/{detail_link}", timeout=5)
+                    if d_res.status_code == 200:
+                        d_content = d_res.content.decode('iso-8859-1', errors='ignore')
+                        
+                        # Image
+                        img_m = re.search(r'<img src="(images/fassung/[^"]+)"', d_content)
+                        if img_m:
+                            data["image_url"] = f"https://ssl.ofdb.de/{img_m.group(1)}"
+                        
+                        # Director
+                        reg_m = re.search(r'Regie:.*?<a[^>]+>([^<]+)</a>', d_content, re.DOTALL)
+                        if reg_m:
+                            data["author"] = reg_m.group(1).strip()
+
+        except Exception as e:
+            print(f"OFDb Error: {e}")
+
     return jsonify(data)
 
 # -- QR Code --
@@ -557,6 +623,7 @@ def settings():
         
         if 'discogs_token' in request.form:
             set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
+            set_config_value('tmdb_api_key', request.form.get('tmdb_api_key', '').strip())
             set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
             set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
             flash(get_text('settings_saved'), 'success')
@@ -568,6 +635,7 @@ def settings():
                            roles=Role.query.all(),
                            locations=sorted(Location.query.all(), key=lambda x: x.full_path),
                            discogs_token=get_config_value('discogs_token', ''),
+                           tmdb_api_key=get_config_value('tmdb_api_key', ''),
                            spotify_client_id=get_config_value('spotify_client_id', ''),
                            spotify_client_secret=get_config_value('spotify_client_secret', ''))
 
