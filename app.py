@@ -1,5 +1,6 @@
 import os
 from flask import Flask
+from sqlalchemy import text, inspect
 from extensions import db, login_manager
 from routes import main, create_initial_data
 
@@ -55,6 +56,19 @@ if __name__ == '__main__':
     with app.app_context():
         # Creates tables only if the file inventory.db does not exist/is empty
         db.create_all()
+
+        # -- MIGRATION CHECK --
+        try:
+            inspector = inspect(db.engine)
+            if 'user' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('user')]
+                if 'language' not in columns:
+                    print("DEBUG: Applying migration - Adding 'language' column to 'user' table")
+                    with db.engine.connect() as conn:
+                        conn.execute(text("ALTER TABLE user ADD COLUMN language VARCHAR(10) DEFAULT 'en'"))
+                        conn.commit()
+        except Exception as e:
+            print(f"DEBUG: Migration warning: {e}")
         
         # Create Admin User & Default Data
         create_initial_data()
