@@ -369,72 +369,74 @@ def api_lookup(barcode):
                         if t.get("type_") != "heading":
                             data["tracks"].append({"position": t.get("position"), "title": t.get("title"), "duration": t.get("duration")})
         except: pass
-
-    # 5. TMDB (Movies/TV)
-    tmdb_key = get_config_value('tmdb_api_key')
-    if tmdb_key and (not data["success"] or data["category"] == ""):
-        try:
-            url = f"https://api.themoviedb.org/3/find/{barcode}?api_key={tmdb_key}&external_source=ean"
-            res = requests.get(url, timeout=5)
-            if res.status_code == 200:
-                js = res.json()
-                results = js.get("movie_results", []) + js.get("tv_results", [])
-                if results:
-                    item = results[0]
-                    data["success"] = True
-                    data["title"] = item.get("title") or item.get("name")
-                    data["description"] = item.get("overview")
-                    data["year"] = (item.get("release_date") or item.get("first_air_date") or "")[:4]
-                    poster = item.get("poster_path")
-                    if poster:
-                        data["image_url"] = f"https://image.tmdb.org/t/p/w500{poster}"
-                    data["category"] = "Film (DVD/BluRay)"
-                    
-                    # Fetch Director (Crew)
-                    media_type = "movie" if "title" in item else "tv"
-                    if media_type == "movie":
-                        mid = item.get("id")
-                        c_res = requests.get(f"https://api.themoviedb.org/3/movie/{mid}/credits?api_key={tmdb_key}", timeout=5)
-                        if c_res.status_code == 200:
-                            crew = c_res.json().get("crew", [])
-                            directors = [c["name"] for c in crew if c["job"] == "Director"]
-                            if directors: data["author"] = ", ".join(directors[:3])
-        except Exception as e:
-            print(f"TMDB Error: {e}")
-
-    # 6. OFDb (Fallback for German titles)
+    
+    # 5. Blu-ray.com (EAN Search)
+    # Replaces TMDB and OFDb as they are unreliable for EANs
     if not data["success"] or data["category"] == "":
         try:
-            # Search OFDb by EAN (Parsing Search Result)
-            url = f"https://ssl.ofdb.de/view.php?page=suchergebnis&Kat=EAN&SText={barcode}"
-            res = requests.get(url, timeout=5)
+            url = f"https://www.blu-ray.com/search/?quicksearch=1&quicksearch_country=all&quicksearch_keyword={barcode}"
+            # User-Agent is required for blu-ray.com
+            headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+            res = requests.get(url, headers=headers, timeout=5)
+            
             if res.status_code == 200:
-                content = res.content.decode('iso-8859-1', errors='ignore')
-                # Regex to find the link to the version (Fassung)
-                match = re.search(r'href="view\.php\?page=fassung&amp;fid=\d+&amp;vid=\d+">([^<]+)</a>', content)
-                if match:
+                content = res.text
+                movie_url = None
+                d_content = ""
+
+                # Check if redirected to detail page
+                if "/movies/" in res.url:
+                    movie_url = res.url
+                    d_content = content
+                else:
+                    # Search results page - find first movie link
+                    # Pattern: <a href="https://www.blu-ray.com/movies/..." ... title="...">
+                    link_match = re.search(r'href="(https://www.blu-ray.com/movies/[^"]+)"[^>]*title="([^"]+)"', content)
+                    if link_match:
+                        movie_url = link_match.group(1)
+                        # Fetch detail page
+                        detail_res = requests.get(movie_url, headers=headers, timeout=5)
+                        if detail_res.status_code == 200:
+                            d_content = detail_res.text
+                        else:
+                            movie_url = None
+
+                if movie_url and d_content:
                     data["success"] = True
-                    data["title"] = match.group(1).strip()
                     data["category"] = "Film (DVD/BluRay)"
                     
-                    # Fetch details for Image & Director
-                    detail_link = match.group(0).split('"')[1].replace("&amp;", "&")
-                    d_res = requests.get(f"https://ssl.ofdb.de/{detail_link}", timeout=5)
-                    if d_res.status_code == 200:
-                        d_content = d_res.content.decode('iso-8859-1', errors='ignore')
+                    # Title (OG Meta tag is usually reliable)
+                    title_match = re.search(r'<meta property="og:title" content="([^"]+)"', d_content)
+                    if title_match:
+                        # Cleanup title (remove "Blu-ray", "4K", etc.)
+                        t = title_match.group(1)
+                        t = re.sub(r'\s+\(Blu-ray\)', '', t)
+                        t = re.sub(r'\s+\(4K\)', '', t)
+                        t = re.sub(r'\s+\(3D\)', '', t)
+                        data["title"] = t.strip()
+                    
+                    # Description
+                    desc_match = re.search(r'<meta property="og:description" content="([^"]+)"', d_content)
+                    if desc_match:
+                        data["description"] = desc_match.group(1)
+
+                    # Image
+                    img_match = re.search(r'<meta property="og:image" content="([^"]+)"', d_content)
+                    if img_match:
+                        data["image_url"] = img_match.group(1)
                         
-                        # Image
-                        img_m = re.search(r'<img src="(images/fassung/[^"]+)"', d_content)
-                        if img_m:
-                            data["image_url"] = f"https://ssl.ofdb.de/{img_m.group(1)}"
+                    # Year
+                    year_match = re.search(r'href="https://www.blu-ray.com/movies/movies.php\?year=(\d{4})"', d_content)
+                    if year_match:
+                        data["year"] = year_match.group(1)
                         
-                        # Director
-                        reg_m = re.search(r'Regie:.*?<a[^>]+>([^<]+)</a>', d_content, re.DOTALL)
-                        if reg_m:
-                            data["author"] = reg_m.group(1).strip()
+                    # Director
+                    dir_match = re.search(r'>Director:<.*?<a[^>]+>([^<]+)</a>', d_content, re.DOTALL)
+                    if dir_match:
+                        data["author"] = dir_match.group(1)
 
         except Exception as e:
-            print(f"OFDb Error: {e}")
+            print(f"Blu-ray.com Error: {e}")
 
     return jsonify(data)
 
@@ -623,7 +625,6 @@ def settings():
         
         if 'discogs_token' in request.form:
             set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
-            set_config_value('tmdb_api_key', request.form.get('tmdb_api_key', '').strip())
             set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
             set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
             flash(get_text('settings_saved'), 'success')
@@ -635,7 +636,6 @@ def settings():
                            roles=Role.query.all(),
                            locations=sorted(Location.query.all(), key=lambda x: x.full_path),
                            discogs_token=get_config_value('discogs_token', ''),
-                           tmdb_api_key=get_config_value('tmdb_api_key', ''),
                            spotify_client_id=get_config_value('spotify_client_id', ''),
                            spotify_client_secret=get_config_value('spotify_client_secret', ''))
 

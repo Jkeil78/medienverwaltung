@@ -196,6 +196,11 @@ TRANSLATIONS = {
         'system': 'System',
         'format': 'Format',
         'show_filters_options': 'Show Filters & Options',
+        'tmdb_title': 'TMDB (Movies & TV)',
+        'tmdb_api_key': 'TMDB API Key',
+        'tmdb_placeholder': 'Insert Key here...',
+        'tmdb_hint': 'Required for movie covers and details.',
+        'generate_key': 'Generate Key here',
     },
     'de': {
         'app_name': 'MedienApp',
@@ -394,6 +399,11 @@ TRANSLATIONS = {
         'system': 'System',
         'format': 'Format',
         'show_filters_options': 'Filter & Optionen anzeigen',
+        'tmdb_title': 'TMDB (Filme & Serien)',
+        'tmdb_api_key': 'TMDB API Key',
+        'tmdb_placeholder': 'Key hier einfügen...',
+        'tmdb_hint': 'Benötigt für Film-Cover und Details.',
+        'generate_key': 'Key hier generieren',
     },
     'es': {
         'app_name': 'MediaApp',
@@ -592,6 +602,11 @@ TRANSLATIONS = {
         'system': 'Sistema',
         'format': 'Formato',
         'show_filters_options': 'Mostrar filtros y opciones',
+        'tmdb_title': 'TMDB (Películas y Series)',
+        'tmdb_api_key': 'Clave API TMDB',
+        'tmdb_placeholder': 'Insertar clave aquí...',
+        'tmdb_hint': 'Requerido para portadas y detalles de películas.',
+        'generate_key': 'Generar clave aquí',
     },
     'fr': {
         'app_name': 'MediaApp',
@@ -790,5 +805,10 @@ TRANSLATIONS = {
         'system': 'Système',
         'format': 'Format',
         'show_filters_options': 'Afficher les filtres et options',
+        'tmdb_title': 'TMDB (Films et Séries)',
+        'tmdb_api_key': 'Clé API TMDB',
+        'tmdb_placeholder': 'Insérer la clé ici...',
+        'tmdb_hint': 'Requis pour les couvertures et détails des films.',
+        'generate_key': 'Générer la clé ici',
     }
 }
