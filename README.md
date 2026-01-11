@@ -101,6 +101,9 @@ In the admin area, you can download a complete backup at any time. It includes t
 ### v0.7.1
 
 * **Feature:** Multi-language support (English, German, Spanish, French).
+
+### v0.7.0
+
 * **Feature:** Central settings page (`/settings`) consolidates API, user, location, and backup management.
 * **Feature:** Bulk move of media items to other locations (Bulk Move).
 * **Security:** Passwords are now securely hashed (PBKDF2/SHA256). Automatic migration on login.
