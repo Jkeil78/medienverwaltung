@@ -1,4 +1,4 @@
-# Media Management v1.7.0
+# Media Management v0.7.1
 
 A web-based application for managing your physical media collection (CDs, vinyl records, books, movies, video games).
 The system provides integrations with Discogs, Spotify, and Google Books to automatically load metadata and cover art.
@@ -98,15 +98,16 @@ In the admin area, you can download a complete backup at any time. It includes t
 
 ## Changelog
 
-### v1.7.0
+### v0.7.1
 
+* **Feature:** Multi-language support (English, German, Spanish, French).
 * **Feature:** Central settings page (`/settings`) consolidates API, user, location, and backup management.
 * **Feature:** Bulk move of media items to other locations (Bulk Move).
 * **Security:** Passwords are now securely hashed (PBKDF2/SHA256). Automatic migration on login.
 * **Security:** Deleting and moving items is now restricted to administrators.
 * **UI:** New SVG logo and a cleaner menu bar.
 
-### v1.6.0
+### v0.6.0
 
 * **Feature:** Lending overview (`/lent`) with PDF export for individual people or all items.
 * **Feature:** Extended Spotify integration (play button, smart search via `difflib` for improved match rate).
@@ -114,7 +115,7 @@ In the admin area, you can download a complete backup at any time. It includes t
 * **UX:** Optimized mobile view for the capture form (more compact layout).
 * **UX:** “Smart Location”: The last selected location is remembered when capturing new items.
 
-### v1.5.0
+### v0.5.0
 
 * Initial Docker version with Discogs & Google Books support.
 * Backup/restore system implemented.
