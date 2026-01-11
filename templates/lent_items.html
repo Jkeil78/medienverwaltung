@@ -3,19 +3,19 @@
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h3 mb-0"><i class="bi bi-person-exclamation"></i> Verliehene Medien</h2>
+        <h2 class="h3 mb-0"><i class="bi bi-person-exclamation"></i> {{ _('lent_media') }}</h2>
         
         <div class="d-flex gap-2">
             <!-- Export für Alle -->
             <a href="{{ url_for('main.lent_export') }}" target="_blank" class="btn btn-outline-secondary">
-                <i class="bi bi-file-earmark-pdf"></i> PDF (Alle)
+                <i class="bi bi-file-earmark-pdf"></i> {{ _('pdf_export_all') }}
             </a>
 
             <!-- Export für spezifische Person -->
             {% if borrowers %}
             <div class="dropdown">
                 <button class="btn btn-primary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-file-earmark-person"></i> PDF für Person...
+                    <i class="bi bi-file-earmark-person"></i> {{ _('pdf_export_person') }}
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown">
                     {% for person in borrowers %}
@@ -37,11 +37,11 @@
                 <table class="table table-hover table-striped mb-0 align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>Titel</th>
-                            <th>Kategorie</th>
-                            <th>Verliehen an</th>
-                            <th>Seit</th>
-                            <th class="text-end">Aktion</th>
+                            <th>{{ _('title') }}</th>
+                            <th>{{ _('category') }}</th>
+                            <th>{{ _('lent_to') }}</th>
+                            <th>{{ _('since') }}</th>
+                            <th class="text-end">{{ _('action') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -53,7 +53,7 @@
                                 </a>
                                 <div class="small text-muted">{{ item.author_artist }}</div>
                             </td>
-                            <td><span class="badge bg-secondary rounded-pill">{{ item.category }}</span></td>
+                            <td><span class="badge bg-secondary rounded-pill">{{ _(item.category) }}</span></td>
                             <td>
                                 <span class="fw-bold text-primary">{{ item.lent_to }}</span>
                             </td>
@@ -71,7 +71,7 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">Aktuell sind keine Medien verliehen.</td>
+                            <td colspan="5" class="text-center py-4 text-muted">{{ _('no_lent_items') }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

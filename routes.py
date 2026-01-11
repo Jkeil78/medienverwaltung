@@ -528,18 +528,23 @@ def logout():
 def settings():
     if not current_user.has_role('Admin'): return redirect(url_for('main.index'))
     
-    active_tab = request.args.get('tab', 'api')
+    active_tab = request.args.get('tab', 'system')
     
     if request.method == 'POST':
-        lang = request.form.get('language')
-        if lang in ['en', 'de', 'es', 'fr']:
-            current_user.language = lang
-            db.session.commit()
-        set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
-        set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
-        set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
-        flash(get_text('settings_saved'), 'success')
-        return redirect(url_for('main.settings', tab='api'))
+        if 'language' in request.form:
+            lang = request.form.get('language')
+            if lang in ['en', 'de', 'es', 'fr']:
+                current_user.language = lang
+                db.session.commit()
+            flash(get_text('settings_saved'), 'success')
+            return redirect(url_for('main.settings', tab='system'))
+        
+        if 'discogs_token' in request.form:
+            set_config_value('discogs_token', request.form.get('discogs_token', '').strip())
+            set_config_value('spotify_client_id', request.form.get('spotify_client_id', '').strip())
+            set_config_value('spotify_client_secret', request.form.get('spotify_client_secret', '').strip())
+            flash(get_text('settings_saved'), 'success')
+            return redirect(url_for('main.settings', tab='api'))
         
     return render_template('settings.html',
                            active_tab=active_tab,
