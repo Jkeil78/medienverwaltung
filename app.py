@@ -71,7 +71,7 @@ if __name__ == '__main__':
                 if 'theme' not in columns:
                     print("DEBUG: Applying migration - Adding 'theme' column to 'user' table")
                     with db.engine.connect() as conn:
-                        conn.execute(text("ALTER TABLE user ADD COLUMN theme VARCHAR(20) DEFAULT 'zephyr'"))
+                        conn.execute(text("ALTER TABLE user ADD COLUMN theme VARCHAR(20) DEFAULT 'cerulean'"))
                         conn.commit()
         except Exception as e:
             print(f"DEBUG: Migration warning: {e}")
