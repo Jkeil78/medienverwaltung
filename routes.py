@@ -431,7 +431,7 @@ def api_lookup(barcode):
                         data["year"] = year_match.group(1)
                         
                     # Director
-                    dir_match = re.search(r'>Director:<.*?<a[^>]+>([^<]+)</a>', d_content, re.DOTALL)
+                    dir_match = re.search(r'Directors?:.*?<a[^>]+>([^<]+)</a>', d_content, re.DOTALL)
                     if dir_match:
                         data["author"] = dir_match.group(1)
 
