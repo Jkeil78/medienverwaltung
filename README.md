@@ -1,4 +1,4 @@
-# Media Management v0.7.1
+# Media Management v0.7.2
 
 A web-based application for managing your physical media collection (CDs, vinyl records, books, movies, video games).
 The system provides integrations with Discogs, Spotify, and Google Books to automatically load metadata and cover art.
@@ -97,6 +97,13 @@ To use all features, API keys should be stored in **Settings**:
 In the admin area, you can download a complete backup at any time. It includes the SQLite database as well as all images. To restore, simply upload the ZIP file again.
 
 ## Changelog
+
+### v0.7.2
+
+* **UI:** Redesigned navigation bar with square buttons and icons.
+* **Feature:** Added "About" dialog in settings.
+* **Feature:** Added Blu-ray.com scraper to fetch Blurays and DVDs.
+
 
 ### v0.7.1
 
