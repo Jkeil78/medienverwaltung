@@ -5,7 +5,7 @@
     <div class="col-12 col-xl-10">
         
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom py-3">
+            <div class="card-header border-bottom py-3">
                 <h4 class="mb-0 fw-bold text-primary">
                     <i class="bi bi-plus-circle-fill me-2"></i>{{ _('create_media') }}
                 </h4>
@@ -18,7 +18,7 @@
                         <div class="col-md-12">
                             <label class="form-label fw-bold">{{ _('barcode_scanner') }}</label>
                             <div class="input-group">
-                                <span class="input-group-text bg-light"><i class="bi bi-upc-scan"></i></span>
+                                <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
                                 <input type="text" id="barcode" name="barcode" class="form-control" placeholder="{{ _('scan_barcode_placeholder') }}" autofocus>
                                 <button type="button" class="btn btn-primary" id="btn-search" onclick="lookupBarcode()">
                                     <span id="search-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
@@ -43,7 +43,7 @@
                                 <div class="col-md-6">
                                     <label for="author" class="form-label">{{ _('author_artist_reg') }}</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light"><i class="bi bi-person"></i></span>
+                                        <span class="input-group-text"><i class="bi bi-person"></i></span>
                                         <input type="text" id="author" name="author_artist" class="form-control" placeholder="{{ _('author_artist_reg') }}">
                                     </div>
                                 </div>
@@ -51,7 +51,7 @@
                                 <div class="col-md-6">
                                     <label for="year" class="form-label">{{ _('release_year') }}</label>
                                     <div class="input-group">
-                                        <span class="input-group-text bg-light"><i class="bi bi-calendar-event"></i></span>
+                                        <span class="input-group-text"><i class="bi bi-calendar-event"></i></span>
                                         <input type="number" id="year" name="release_year" class="form-control" placeholder="JJJJ">
                                     </div>
                                 </div>
@@ -84,14 +84,14 @@
                         </div>
 
                         <div class="col-lg-4">
-                            <div class="card bg-light border-0 h-100">
+                            <div class="card bg-body-secondary border-0 h-100">
                                 <div class="card-body">
                                     <label class="form-label fw-bold">{{ _('cover_image') }}</label>
                                     
                                     <input type="file" id="imageInput" name="image" class="d-none" accept="image/*" onchange="previewFile()">
                                     <input type="hidden" id="remote_image_url" name="remote_image_url">
                                     
-                                    <div class="position-relative mt-2 bg-white rounded border d-flex align-items-center justify-content-center overflow-hidden group-hover-container" 
+                                    <div class="position-relative mt-2 bg-body rounded border d-flex align-items-center justify-content-center overflow-hidden group-hover-container" 
                                          style="min-height: 250px; cursor: pointer;"
                                          onclick="document.getElementById('imageInput').click();">
                                         
@@ -118,7 +118,7 @@
                         <h5 class="mb-3 text-secondary"><i class="bi bi-music-note-list me-2"></i>{{ _('detected_tracks') }}</h5>
                         <div class="table-responsive">
                             <table class="table table-sm table-hover align-middle" id="tracks-table">
-                                <thead class="table-light">
+                                <thead>
                                     <tr>
                                         <th style="width: 80px;">{{ _('position') }}</th>
                                         <th>{{ _('title') }}</th>
@@ -225,8 +225,8 @@ async function lookupBarcode() {
                 const el = document.getElementById(id);
                 if(val && el) {
                     el.value = val;
-                    el.classList.add('bg-light'); // Visuelles Feedback
-                    setTimeout(() => el.classList.remove('bg-light'), 500);
+                    el.classList.add('bg-body-secondary'); // Visuelles Feedback
+                    setTimeout(() => el.classList.remove('bg-body-secondary'), 500);
                 }
             };
 

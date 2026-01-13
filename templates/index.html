@@ -31,21 +31,21 @@
 </div>
 
 <div class="card mb-4 shadow-sm border-0">
-    <div class="card-body bg-white rounded collapse d-md-block mobile-collapsible">
+    <div class="card-body rounded collapse d-md-block mobile-collapsible">
         {% if current_user.is_authenticated %}
         <form action="{{ url_for('main.index') }}" method="GET">
             
             <div class="row g-2 mb-3">
                 <div class="col-md-3">
                     <div class="input-group">
-                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="q" class="form-control border-start-0 bg-light" 
+                        <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" name="q" class="form-control border-start-0" 
                                placeholder="{{ _('search') }}..." value="{{ filters.q }}">
                     </div>
                 </div>
 
                 <div class="col-md-2">
-                    <select name="category" class="form-select bg-light" onchange="this.form.submit()">
+                    <select name="category" class="form-select" onchange="this.form.submit()">
                         <option value="">{{ _('filter_category') }}</option>
                         {% for cat in categories %}
                             <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ _(cat) }}</option>
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="col-md-3">
-                    <select name="location" class="form-select bg-light" onchange="this.form.submit()">
+                    <select name="location" class="form-select" onchange="this.form.submit()">
                         <option value="">{{ _('filter_location') }}</option>
                         {% for loc in locations %}
                             <option value="{{ loc.id }}" {% if filters.location|int == loc.id %}selected{% endif %}>{{ loc.full_path }}</option>
@@ -63,7 +63,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <select name="lent" class="form-select bg-light" onchange="this.form.submit()">
+                    <select name="lent" class="form-select" onchange="this.form.submit()">
                         <option value="" {% if filters.lent == '' %}selected{% endif %}>{{ _('filter_status') }}</option>
                         <option value="no" {% if filters.lent == 'no' %}selected{% endif %}>{{ _('status_available') }}</option>
                         <option value="yes" {% if filters.lent == 'yes' %}selected{% endif %}>{{ _('status_lent') }}</option>
@@ -71,7 +71,7 @@
                 </div>
 
                 <div class="col-md-2">
-                    <select name="limit" class="form-select bg-light" onchange="this.form.submit()" title="{{ _('per_page') }}">
+                    <select name="limit" class="form-select" onchange="this.form.submit()" title="{{ _('per_page') }}">
                         <option value="20" {% if filters.limit == '20' or not filters.limit %}selected{% endif %}>20 {{ _('per_page') }}</option>
                         <option value="50" {% if filters.limit == '50' %}selected{% endif %}>50 {{ _('per_page') }}</option>
                         <option value="100" {% if filters.limit == '100' %}selected{% endif %}>100 {{ _('per_page') }}</option>
@@ -80,7 +80,7 @@
                 </div>
             </div>
 
-            <div class="row g-2 align-items-center bg-light p-2 rounded mx-0">
+            <div class="row g-2 align-items-center bg-body-tertiary p-2 rounded mx-0">
                 
                 <div class="col-auto d-flex align-items-center">
                     <i class="bi bi-arrow-down-up text-muted me-2"></i>
@@ -88,7 +88,7 @@
                 </div>
 
                 <div class="col-auto">
-                    <select name="sort_field" class="form-select form-select-sm border-0 bg-white" onchange="this.form.submit()">
+                    <select name="sort_field" class="form-select form-select-sm border-0" onchange="this.form.submit()">
                         <option value="added" {% if filters.sort_field == 'added' %}selected{% endif %}>{{ _('sort_added') }}</option>
                         <option value="title" {% if filters.sort_field == 'title' %}selected{% endif %}>{{ _('sort_title') }}</option>
                         <option value="author" {% if filters.sort_field == 'author' %}selected{% endif %}>{{ _('sort_author') }}</option>
@@ -97,7 +97,7 @@
                 </div>
 
                 <div class="col-auto">
-                    <select name="sort_order" class="form-select form-select-sm border-0 bg-white" onchange="this.form.submit()">
+                    <select name="sort_order" class="form-select form-select-sm border-0" onchange="this.form.submit()">
                         <option value="asc" {% if filters.sort_order == 'asc' %}selected{% endif %}>{{ _('sort_asc') }}</option>
                         <option value="desc" {% if filters.sort_order == 'desc' %}selected{% endif %}>{{ _('sort_desc') }}</option>
                     </select>
@@ -127,7 +127,7 @@
     {% if current_user.has_role('Admin') %}
     <form action="{{ url_for('main.bulk_move') }}" method="POST">
         
-        <div class="card mb-3 shadow-sm border-0 bg-light collapse d-md-block mobile-collapsible">
+        <div class="card mb-3 shadow-sm border-0 bg-body-secondary collapse d-md-block mobile-collapsible">
             <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
                 <div class="form-check mb-0">
                     <input class="form-check-input" type="checkbox" id="selectAll">
@@ -176,7 +176,7 @@
                                     {% if item.image_filename %}
                                         <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="Cover" style="object-fit: cover;">
                                     {% else %}
-                                        <div class="bg-light d-flex align-items-center justify-content-center text-muted h-100">
+                                        <div class="bg-body-secondary d-flex align-items-center justify-content-center text-muted h-100">
                                             <i class="bi bi-book"></i>
                                         </div>
                                     {% endif %}
@@ -220,7 +220,7 @@
                             {% if current_user.has_role('Admin') %}
                             <input type="checkbox" name="item_ids" value="{{ item.id }}" class="form-check-input item-checkbox shadow-sm mt-0" style="pointer-events: auto; cursor: pointer;">
                             {% endif %}
-                            <span class="badge bg-white bg-opacity-75 text-body shadow-sm border">{{ _(item.category) }}</span>
+                            <span class="badge bg-body bg-opacity-75 text-body shadow-sm border">{{ _(item.category) }}</span>
                         </div>
                         {% if item.lent_to %}
                             <span class="badge bg-warning text-dark shadow-sm">{{ _('lent') }}</span>
@@ -228,7 +228,7 @@
                     </div>
                     
                     <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none text-dark d-block">
-                        <div class="ratio ratio-1x1 bg-light rounded-top">
+                        <div class="ratio ratio-1x1 bg-body-secondary rounded-top">
                             {% if item.image_filename %}
                                 <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
                                      class="card-img-top object-fit-cover rounded-top" 

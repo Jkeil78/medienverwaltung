@@ -8,7 +8,7 @@
         </h3>
 
         <div class="card shadow-sm border-0">
-            <div class="card-header bg-white border-bottom">
+            <div class="card-header border-bottom">
                 <ul class="nav nav-tabs card-header-tabs" id="settingsTab" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link {% if active_tab == 'ownership' %}active{% endif %}" id="ownership-tab" data-bs-toggle="tab" data-bs-target="#ownership" type="button" role="tab">
@@ -162,7 +162,7 @@
                     <div class="tab-pane fade {% if active_tab == 'locations' %}show active{% endif %}" id="locations" role="tabpanel">
                         <div class="row g-4">
                             <div class="col-md-5 order-md-2">
-                                <div class="card bg-light border-0">
+                                <div class="card bg-body-secondary border-0">
                                     <div class="card-body">
                                         <h6 class="fw-bold mb-3">{{ _('new_location') }}</h6>
                                         <form method="POST" action="{{ url_for('main.location_create') }}">
@@ -187,7 +187,7 @@
                             <div class="col-md-7 order-md-1">
                                 <div class="table-responsive border rounded">
                                     <table class="table table-hover align-middle mb-0">
-                                        <thead class="table-light"><tr><th>{{ _('hierarchy') }}</th><th class="text-end">{{ _('action') }}</th></tr></thead>
+                                        <thead><tr><th>{{ _('hierarchy') }}</th><th class="text-end">{{ _('action') }}</th></tr></thead>
                                         <tbody>
                                             {% for loc in locations %}
                                             <tr>
@@ -216,7 +216,7 @@
                             <div class="col-md-8">
                                 <div class="table-responsive border rounded">
                                     <table class="table table-hover align-middle mb-0">
-                                        <thead class="table-light"><tr><th class="ps-3">{{ _('username') }}</th><th>{{ _('role') }}</th><th class="text-end pe-3">{{ _('action') }}</th></tr></thead>
+                                        <thead><tr><th class="ps-3">{{ _('username') }}</th><th>{{ _('role') }}</th><th class="text-end pe-3">{{ _('action') }}</th></tr></thead>
                                         <tbody>
                                             {% for user in users %}
                                             <tr>
@@ -234,7 +234,7 @@
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="card bg-light border-0">
+                                <div class="card bg-body-secondary border-0">
                                     <div class="card-body">
                                         <h6 class="fw-bold mb-3">{{ _('create_user') }}</h6>
                                         <form action="{{ url_for('main.user_create') }}" method="POST">
