@@ -225,8 +225,8 @@ async function lookupBarcode() {
                 const el = document.getElementById(id);
                 if(val && el) {
                     el.value = val;
-                    el.classList.add('bg-body-secondary'); // Visuelles Feedback
-                    setTimeout(() => el.classList.remove('bg-body-secondary'), 500);
+                    el.classList.add('bg-success-subtle', 'border-success'); // Visuelles Feedback
+                    setTimeout(() => el.classList.remove('bg-success-subtle', 'border-success'), 1200);
                 }
             };
 

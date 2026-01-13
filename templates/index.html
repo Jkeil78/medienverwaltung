@@ -183,7 +183,7 @@
                                 </div>
                             </td>
                             <td>
-                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold text-dark d-block text-truncate" style="max-width: 300px;">
+                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold text-body-emphasis d-block text-truncate" style="max-width: 300px;">
                                     {{ item.title }}
                                 </a>
                                 <div class="small text-muted d-md-none">
@@ -227,7 +227,7 @@
                         {% endif %}
                     </div>
                     
-                    <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none text-dark d-block">
+                    <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none text-body d-block">
                         <div class="ratio ratio-1x1 bg-body-secondary rounded-top">
                             {% if item.image_filename %}
                                 <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
