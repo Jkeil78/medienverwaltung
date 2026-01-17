@@ -962,20 +962,36 @@ def labels_print():
     
     items = MediaItem.query.filter(MediaItem.id.in_(item_ids)).all()
     
+    try:
+        width = float(request.form.get('width', '62'))
+        height = float(request.form.get('height', '29'))
+        padding = float(request.form.get('padding', '2'))
+        font_size = float(request.form.get('font_size', '10'))
+        columns = int(request.form.get('columns', '1'))
+        margin_top = float(request.form.get('margin_top', '0'))
+        margin_left = float(request.form.get('margin_left', '0'))
+    except ValueError:
+        width, height, padding, font_size, columns, margin_top, margin_left = 62.0, 29.0, 2.0, 10.0, 1, 0.0, 0.0
+
+    # Calculate QR size: 80% of label height, minus padding
+    qr_size = (height - (2 * padding)) * 0.9
+    if qr_size < 5: qr_size = 5 # Minimum size
+
     config = {
-        'width': request.form.get('width', '62'),
-        'height': request.form.get('height', '29'),
-        'margin_top': request.form.get('margin_top', '0'),
-        'margin_left': request.form.get('margin_left', '0'),
-        'padding': request.form.get('padding', '2'),
-        'columns': int(request.form.get('columns', 1)),
+        'width': width,
+        'height': height,
+        'margin_top': margin_top,
+        'margin_left': margin_left,
+        'padding': padding,
+        'columns': columns,
+        'qr_size': qr_size,
         'show_qr': 'show_qr' in request.form,
         'show_title': 'show_title' in request.form,
         'show_id': 'show_id' in request.form,
         'show_owner': 'show_owner' in request.form,
         'show_address': 'show_address' in request.form,
         'show_phone': 'show_phone' in request.form,
-        'font_size': request.form.get('font_size', '10')
+        'font_size': font_size
     }
 
     owner_info = {
