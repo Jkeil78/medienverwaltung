@@ -304,7 +304,7 @@
     <nav aria-label="Page navigation">
         <ul class="pagination">
             <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num) }}">
+                <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num, **filters) }}">
                     <i class="bi bi-chevron-left"></i>
                 </a>
             </li>
@@ -312,7 +312,7 @@
             {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_num %}
             <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                <a class="page-link" href="{{ url_for('main.index', page=page_num) }}">{{ page_num }}</a>
+                <a class="page-link" href="{{ url_for('main.index', page=page_num, **filters) }}">{{ page_num }}</a>
             </li>
             {% else %}
             <li class="page-item disabled"><span class="page-link">...</span></li>
@@ -320,7 +320,7 @@
             {% endfor %}
 
             <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num) }}">
+                <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num, **filters) }}">
                     <i class="bi bi-chevron-right"></i>
                 </a>
             </li>
