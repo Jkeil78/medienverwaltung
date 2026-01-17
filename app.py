@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from flask import Flask
 from sqlalchemy import text, inspect
 from extensions import db, login_manager
@@ -21,6 +22,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Secret Key (Ideally load via environment variable later)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-bitte-aendern')
+
+# Remember Me: Stay logged in for 7 days
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)
 
 # Upload Configuration
 # We use app.root_path to ensure we stay in the app directory

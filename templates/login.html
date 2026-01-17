@@ -17,6 +17,10 @@
                         <label class="form-label">{{ _('password') }}</label>
                         <input type="password" name="password" class="form-control" required>
                     </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="remember" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">{{ _('remember_me') }}</label>
+                    </div>
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">{{ _('login') }}</button>
                     </div>

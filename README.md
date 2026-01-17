@@ -5,26 +5,14 @@ The system provides integrations with Discogs, Spotify, and Google Books to auto
 
 ## Features
 
-* **Inventory**: Capture media items with barcode scanner support or manual entry.
-* **Label Printing**:
-  * Built-in label configuration suite for precise millimeter-based printing.
-  * Direct printing of selected items from the media list.
-  * Presets for common label sizes (Brother, Avery Zweckform, etc.).
-  * Persistent custom presets: Save, load, and delete your own label dimensions.
-  * "Start at position": Reuse partially used label sheets by skipping slots.
-  * Selective content: QR code, Title, Artist/Author, Inventory Number.
-  * Owner info integration (retrieves name, address, phone from settings).
-  * Flexible layout: Horizontal or Vertical (text below QR code) for narrow labels.
-* **Automatic metadata**:
-
-  * **Music**: Search via the Discogs API (cover art, tracklists, year).
-  * **Books**: Search via Google Books, OpenLibrary, and Amazon (cover art, author, description).
-* **Spotify integration**: Preview player for CDs and vinyl records directly in the detail view.
-* **Location management**: Hierarchical storage locations (e.g., Living Room > Shelf A > Compartment 1).
-* **Lending status**: Mark items as lent out, including PDF export and print view.
-* **QR codes**: Generate QR codes for each item for quick scanning.
-* **Backup & restore**: Full backup of the database and images as a ZIP file.
-* **User management**: Role-based access (Admin/User).
+* **📦 Inventory Management**: Capture media items with barcode scanner support or manual entry.
+* **🔍 Automatic Metadata**: Instant metadata enrichment for Music (Discogs), Books (Google Books), and Movies (Blu-ray.com).
+* **🏷️ Label Printing**: High-precision labeling system with custom dimensions, presets for common brands (Brother, Avery), and flexible layouts (text below QR code).
+* **📂 Hierarchical Organization**: Manage storage locations with deep nesting (e.g., Living Room > Shelf A > Compartment 1) and bulk move functionality.
+* **🤝 Lending & Tracking**: Mark items as lent out, track borrowers, and export lending lists as PDF.
+* **🎵 Spotify Integration**: Built-in preview player for audio media directly in the detail view.
+* **📱 Responsive Design**: Fully optimized for mobile use with quick QR code scanning for inventory lookup.
+* **🛡️ Security & Admin**: Role-based access control (Admin/User), secure password hashing, and full database/image backup system.
 
 ## Installation with Docker (Recommended)
 

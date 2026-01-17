@@ -590,7 +590,8 @@ def login():
     if request.method == 'POST':
         user = User.query.filter_by(username=request.form.get('username')).first()
         if user and user.check_password(request.form.get('password')):
-            login_user(user)
+            remember = True if request.form.get('remember') else False
+            login_user(user, remember=remember)
             return redirect(url_for('main.index'))
         flash(get_text('flash_login_failed'), 'error')
     return render_template('login.html')
