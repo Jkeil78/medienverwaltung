@@ -70,7 +70,6 @@
 
         .label-content {
             display: flex;
-            flex-direction: row;
             align-items: center;
             width: 100%;
             height: 100%;
@@ -97,11 +96,22 @@
             flex-direction: column;
             justify-content: center;
             line-height: 1.2;
+            width: 100%;
         }
 
         .item-title {
             font-weight: bold;
             margin-bottom: 0.5mm;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .item-artist {
+            font-style: italic;
+            margin-bottom: 0.5mm;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            font-size: 0.9em;
         }
 
         .item-id {
@@ -140,6 +150,10 @@
                     height: ${cfg.height}mm;
                     padding: ${cfg.padding}mm;
                 }
+                .label-content {
+                    flex-direction: ${cfg.vertical_layout ? 'column' : 'row'};
+                    text-align: ${cfg.vertical_layout ? 'center' : 'left'};
+                }
                 .qr-container {
                     width: ${cfg.qr_size}mm;
                     height: ${cfg.qr_size}mm;
@@ -176,6 +190,10 @@
                 <div class="text-container">
                     {% if config.show_title %}
                     <div class="item-title">{{ item.title }}</div>
+                    {% endif %}
+
+                    {% if config.show_artist and item.author_artist %}
+                    <div class="item-artist">{{ item.author_artist }}</div>
                     {% endif %}
 
                     {% if config.show_id %}

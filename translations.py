@@ -224,6 +224,8 @@ TRANSLATIONS = {
         'font_size': 'Font Size',
         'content': 'Content',
         'preview_and_print': 'Preview & Print',
+        'author_artist': 'Author/Artist',
+        'vertical_layout': 'Text below QR (Vertical)',
     },
     'de': {
         'app_name': 'MedienApp',
@@ -450,6 +452,8 @@ TRANSLATIONS = {
         'font_size': 'Schriftgröße',
         'content': 'Inhalt',
         'preview_and_print': 'Vorschau & Drucken',
+        'author_artist': 'Autor/Künstler',
+        'vertical_layout': 'Text unter QR (Vertikal)',
     },
     'es': {
         'app_name': 'MediaApp',

@@ -973,8 +973,14 @@ def labels_print():
     except ValueError:
         width, height, padding, font_size, columns, margin_top, margin_left = 62.0, 29.0, 2.0, 10.0, 1, 0.0, 0.0
 
-    # Calculate QR size: 80% of label height, minus padding
-    qr_size = (height - (2 * padding)) * 0.9
+    # Calculate QR size:
+    if 'vertical_layout' in request.form:
+        # If vertical, QR code should leave room for at least 3-4 lines of text below.
+        qr_size = (height - (2 * padding)) * 0.5
+    else:
+        # If horizontal, QR code can take most of the height.
+        qr_size = (height - (2 * padding)) * 0.9
+        
     if qr_size < 5: qr_size = 5 # Minimum size
 
     config = {
@@ -987,10 +993,12 @@ def labels_print():
         'qr_size': qr_size,
         'show_qr': 'show_qr' in request.form,
         'show_title': 'show_title' in request.form,
+        'show_artist': 'show_artist' in request.form,
         'show_id': 'show_id' in request.form,
         'show_owner': 'show_owner' in request.form,
         'show_address': 'show_address' in request.form,
         'show_phone': 'show_phone' in request.form,
+        'vertical_layout': 'vertical_layout' in request.form,
         'font_size': font_size
     }
 
