@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Labels Print Preview</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+            -webkit-print-color-adjust: exact;
+        }
+
+        @page {
+            margin: 0;
+            size: auto;
+        }
+
+        .no-print {
+            padding: 15px;
+            background: #fff;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .label-sheet {
+            display: grid;
+
+            grid-template-columns: repeat({
+                    {
+                    config.columns
+                }
+            }
+
+            , {
+                {
+                config.width
+            }
+        }
+
+        mm);
+        gap: 0;
+        justify-content: start;
+
+        padding-top: {
+                {
+                config.margin_top
+            }
+        }
+
+        mm;
+
+        padding-left: {
+                {
+                config.margin_left
+            }
+        }
+
+        mm;
+        background: #fff;
+        width: fit-content;
+        margin: auto;
+        }
+
+        .label-item {
+            width: {
+                    {
+                    config.width
+                }
+            }
+
+            mm;
+
+            height: {
+                    {
+                    config.height
+                }
+            }
+
+            mm;
+            box-sizing: border-box;
+            border: 1px dashed #ccc;
+            /* Visible in preview, hidden in print */
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: {
+                    {
+                    config.padding
+                }
+            }
+
+            mm;
+            position: relative;
+        }
+
+        .label-content {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+            gap: 2mm;
+        }
+
+        .qr-container {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .qr-container img {
+            max-height: 100%;
+            width: auto;
+            display: block;
+        }
+
+        .text-container {
+            flex-grow: 1;
+
+            font-size: {
+                    {
+                    config.font_size
+                }
+            }
+
+            pt;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .item-title {
+            font-weight: bold;
+            margin-bottom: 1mm;
+            line-height: 1.1;
+        }
+
+        .item-id {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        @media print {
+            body {
+                background: none;
+            }
+
+            .no-print {
+                display: none;
+            }
+
+            .label-sheet {
+                margin: 0;
+
+                padding-top: {
+                        {
+                        config.margin_top
+                    }
+                }
+
+                mm;
+
+                padding-left: {
+                        {
+                        config.margin_left
+                    }
+                }
+
+                mm;
+            }
+
+            .label-item {
+                border: none;
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="no-print">
+        <button onclick="window.print()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">
+            Print Labels
+        </button>
+        <p style="color: #666; font-size: 14px; margin-top: 10px;">
+            Tip: In the print dialog, set <strong>Margins</strong> to <strong>None</strong> and <strong>Scale</strong>
+            to <strong>100%</strong>.
+        </p>
+    </div>
+
+    <div class="label-sheet">
+        {% for item in items %}
+        <div class="label-item">
+            <div class="label-content">
+                {% if config.show_qr %}
+                <div class="qr-container">
+                    <img src="{{ url_for('main.qrcode_image', inventory_number=item.inventory_number) }}" alt="QR">
+                </div>
+                {% endif %}
+
+                <div class="text-container">
+                    {% if config.show_title %}
+                    <div class="item-title">{{ item.title }}</div>
+                    {% endif %}
+
+                    {% if config.show_id %}
+                    <div class="item-id">{{ item.inventory_number }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+
+</html>

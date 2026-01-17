@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-printer me-2"></i>{{ _('label_configuration') }}</h4>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('main.labels_print') }}" method="POST" target="_blank">
+                    <!-- Hidden IDs -->
+                    {% for item_id in item_ids %}
+                    <input type="hidden" name="item_ids" value="{{ item_id }}">
+                    {% endfor %}
+
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">{{ _('presets') }}</label>
+                            <select class="form-select" id="presetSelect" onchange="applyPreset(this.value)">
+                                <option value="custom">{{ _('custom') }}</option>
+                                <option value="brother_62x29">Brother (62mm x 29mm)</option>
+                                <option value="brother_62x100">Brother (62mm x 100mm)</option>
+                                <option value="avery_3x7">Avery Zweckform 3x7 (70mm x 42.3mm)</option>
+                                <option value="avery_2x8">Avery Zweckform 2x8 (105mm x 37mm)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('width') }} (mm)</label>
+                            <input type="number" name="width" id="width" class="form-control" value="62" step="0.1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('height') }} (mm)</label>
+                            <input type="number" name="height" id="height" class="form-control" value="29" step="0.1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ _('margin_top') }} (mm)</label>
+                            <input type="number" name="margin_top" id="margin_top" class="form-control" value="0"
+                                step="0.1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ _('margin_left') }} (mm)</label>
+                            <input type="number" name="margin_left" id="margin_left" class="form-control" value="0"
+                                step="0.1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ _('padding') }} (mm)</label>
+                            <input type="number" name="padding" id="padding" class="form-control" value="2" step="0.1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('columns') }}</label>
+                            <input type="number" name="columns" id="columns" class="form-control" value="1">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ _('font_size') }} (pt)</label>
+                            <input type="number" name="font_size" id="font_size" class="form-control" value="10">
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <h5 class="mb-3">{{ _('content') }}</h5>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="show_qr" id="show_qr" checked>
+                                <label class="form-check-label" for="show_qr">QR-Code</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="show_title" id="show_title"
+                                    checked>
+                                <label class="form-check-label" for="show_title">{{ _('title') }}</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="show_id" id="show_id" checked>
+                                <label class="form-check-label" for="show_id">{{ _('inventory_number') }}</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex justify-content-between">
+                        <a href="{{ url_for('main.index') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-1"></i>{{ _('cancel') }}
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-eye me-1"></i>{{ _('preview_and_print') }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function applyPreset(val) {
+        const w = document.getElementById('width');
+        const h = document.getElementById('height');
+        const mt = document.getElementById('margin_top');
+        const ml = document.getElementById('margin_left');
+        const cols = document.getElementById('columns');
+
+        if (val === 'brother_62x29') {
+            w.value = 62; h.value = 29; mt.value = 0; ml.value = 0; cols.value = 1;
+        } else if (val === 'brother_62x100') {
+            w.value = 62; h.value = 100; mt.value = 0; ml.value = 0; cols.value = 1;
+        } else if (val === 'avery_3x7') {
+            w.value = 70; h.value = 42.3; mt.value = 0; ml.value = 0; cols.value = 3;
+        } else if (val === 'avery_2x8') {
+            w.value = 105; h.value = 37; mt.value = 0; ml.value = 0; cols.value = 2;
+        }
+    }
+</script>
+{% endblock %}

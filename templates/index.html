@@ -6,18 +6,20 @@
         <h2 class="h4 mb-0">{{ _('my_media') }}</h2>
         <span class="badge bg-secondary rounded-pill">
             {% if pagination %}
-                {{ pagination.total }} {{ _('total') }}
+            {{ pagination.total }} {{ _('total') }}
             {% else %}
-                {{ items|length }}
+            {{ items|length }}
             {% endif %}
         </span>
     </div>
-    
+
     <div class="btn-group mt-2 mt-md-0" role="group">
-        <button type="button" class="btn btn-outline-primary active" id="btn-view-table" onclick="setView('table')" title="{{ _('view_table') }}">
+        <button type="button" class="btn btn-outline-primary active" id="btn-view-table" onclick="setView('table')"
+            title="{{ _('view_table') }}">
             <i class="bi bi-list"></i>
         </button>
-        <button type="button" class="btn btn-outline-primary" id="btn-view-grid" onclick="setView('grid')" title="{{ _('view_grid') }}">
+        <button type="button" class="btn btn-outline-primary" id="btn-view-grid" onclick="setView('grid')"
+            title="{{ _('view_grid') }}">
             <i class="bi bi-grid"></i>
         </button>
     </div>
@@ -25,7 +27,8 @@
 
 <!-- Mobile Toggle Button -->
 <div class="d-md-none mb-3">
-    <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target=".mobile-collapsible" aria-expanded="false">
+    <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse"
+        data-bs-target=".mobile-collapsible" aria-expanded="false">
         <i class="bi bi-funnel"></i> {{ _('show_filters_options') }}
     </button>
 </div>
@@ -34,13 +37,13 @@
     <div class="card-body rounded collapse d-md-block mobile-collapsible">
         {% if current_user.is_authenticated %}
         <form action="{{ url_for('main.index') }}" method="GET">
-            
+
             <div class="row g-2 mb-3">
                 <div class="col-md-3">
                     <div class="input-group">
                         <span class="input-group-text border-end-0"><i class="bi bi-search text-muted"></i></span>
-                        <input type="text" name="q" class="form-control border-start-0" 
-                               placeholder="{{ _('search') }}..." value="{{ filters.q }}">
+                        <input type="text" name="q" class="form-control border-start-0"
+                            placeholder="{{ _('search') }}..." value="{{ filters.q }}">
                     </div>
                 </div>
 
@@ -48,7 +51,8 @@
                     <select name="category" class="form-select" onchange="this.form.submit()">
                         <option value="">{{ _('filter_category') }}</option>
                         {% for cat in categories %}
-                            <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ _(cat) }}</option>
+                        <option value="{{ cat }}" {% if filters.category==cat %}selected{% endif %}>{{ _(cat) }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>
@@ -57,49 +61,63 @@
                     <select name="location" class="form-select" onchange="this.form.submit()">
                         <option value="">{{ _('filter_location') }}</option>
                         {% for loc in locations %}
-                            <option value="{{ loc.id }}" {% if filters.location|int == loc.id %}selected{% endif %}>{{ loc.full_path }}</option>
+                        <option value="{{ loc.id }}" {% if filters.location|int==loc.id %}selected{% endif %}>{{
+                            loc.full_path }}</option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div class="col-md-2">
                     <select name="lent" class="form-select" onchange="this.form.submit()">
-                        <option value="" {% if filters.lent == '' %}selected{% endif %}>{{ _('filter_status') }}</option>
-                        <option value="no" {% if filters.lent == 'no' %}selected{% endif %}>{{ _('status_available') }}</option>
-                        <option value="yes" {% if filters.lent == 'yes' %}selected{% endif %}>{{ _('status_lent') }}</option>
+                        <option value="" {% if filters.lent=='' %}selected{% endif %}>{{ _('filter_status') }}</option>
+                        <option value="no" {% if filters.lent=='no' %}selected{% endif %}>{{ _('status_available') }}
+                        </option>
+                        <option value="yes" {% if filters.lent=='yes' %}selected{% endif %}>{{ _('status_lent') }}
+                        </option>
                     </select>
                 </div>
 
                 <div class="col-md-2">
                     <select name="limit" class="form-select" onchange="this.form.submit()" title="{{ _('per_page') }}">
-                        <option value="20" {% if filters.limit == '20' or not filters.limit %}selected{% endif %}>20 {{ _('per_page') }}</option>
-                        <option value="50" {% if filters.limit == '50' %}selected{% endif %}>50 {{ _('per_page') }}</option>
-                        <option value="100" {% if filters.limit == '100' %}selected{% endif %}>100 {{ _('per_page') }}</option>
-                        <option value="all" {% if filters.limit == 'all' %}selected{% endif %}>{{ _('show_all') }}</option>
+                        <option value="20" {% if filters.limit=='20' or not filters.limit %}selected{% endif %}>20 {{
+                            _('per_page') }}</option>
+                        <option value="50" {% if filters.limit=='50' %}selected{% endif %}>50 {{ _('per_page') }}
+                        </option>
+                        <option value="100" {% if filters.limit=='100' %}selected{% endif %}>100 {{ _('per_page') }}
+                        </option>
+                        <option value="all" {% if filters.limit=='all' %}selected{% endif %}>{{ _('show_all') }}
+                        </option>
                     </select>
                 </div>
             </div>
 
             <div class="row g-2 align-items-center bg-body-tertiary p-2 rounded mx-0">
-                
+
                 <div class="col-auto d-flex align-items-center">
                     <i class="bi bi-arrow-down-up text-muted me-2"></i>
-                    <small class="fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">{{ _('sort_by') }}:</small>
+                    <small class="fw-bold text-muted text-uppercase" style="font-size: 0.75rem;">{{ _('sort_by')
+                        }}:</small>
                 </div>
 
                 <div class="col-auto">
                     <select name="sort_field" class="form-select form-select-sm border-0" onchange="this.form.submit()">
-                        <option value="added" {% if filters.sort_field == 'added' %}selected{% endif %}>{{ _('sort_added') }}</option>
-                        <option value="title" {% if filters.sort_field == 'title' %}selected{% endif %}>{{ _('sort_title') }}</option>
-                        <option value="author" {% if filters.sort_field == 'author' %}selected{% endif %}>{{ _('sort_author') }}</option>
-                        <option value="year" {% if filters.sort_field == 'year' %}selected{% endif %}>{{ _('sort_year') }}</option>
+                        <option value="added" {% if filters.sort_field=='added' %}selected{% endif %}>{{ _('sort_added')
+                            }}</option>
+                        <option value="title" {% if filters.sort_field=='title' %}selected{% endif %}>{{ _('sort_title')
+                            }}</option>
+                        <option value="author" {% if filters.sort_field=='author' %}selected{% endif %}>{{
+                            _('sort_author') }}</option>
+                        <option value="year" {% if filters.sort_field=='year' %}selected{% endif %}>{{ _('sort_year') }}
+                        </option>
                     </select>
                 </div>
 
                 <div class="col-auto">
                     <select name="sort_order" class="form-select form-select-sm border-0" onchange="this.form.submit()">
-                        <option value="asc" {% if filters.sort_order == 'asc' %}selected{% endif %}>{{ _('sort_asc') }}</option>
-                        <option value="desc" {% if filters.sort_order == 'desc' %}selected{% endif %}>{{ _('sort_desc') }}</option>
+                        <option value="asc" {% if filters.sort_order=='asc' %}selected{% endif %}>{{ _('sort_asc') }}
+                        </option>
+                        <option value="desc" {% if filters.sort_order=='desc' %}selected{% endif %}>{{ _('sort_desc') }}
+                        </option>
                     </select>
                 </div>
 
@@ -107,44 +125,57 @@
                     <button class="btn btn-primary btn-sm px-3" type="submit">
                         <i class="bi bi-funnel-fill me-1"></i>{{ _('apply') }}
                     </button>
-                    
+
                     {% if filter_active %}
-                        <a href="{{ url_for('main.index', reset=1) }}" class="btn btn-outline-secondary btn-sm" title="{{ _('reset') }}">
-                            <i class="bi bi-x-lg me-1"></i>{{ _('reset') }}
-                        </a>
+                    <a href="{{ url_for('main.index', reset=1) }}" class="btn btn-outline-secondary btn-sm"
+                        title="{{ _('reset') }}">
+                        <i class="bi bi-x-lg me-1"></i>{{ _('reset') }}
+                    </a>
                     {% endif %}
                 </div>
             </div>
 
         </form>
         {% else %}
-            <div class="text-center text-muted">{{ _('please_login') }}</div>
+        <div class="text-center text-muted">{{ _('please_login') }}</div>
         {% endif %}
     </div>
 </div>
 
 {% if items %}
-    {% if current_user.has_role('Admin') %}
-    <form action="{{ url_for('main.bulk_move') }}" method="POST">
-        
-        <div class="card mb-3 shadow-sm border-0 bg-body-secondary collapse d-md-block mobile-collapsible">
-            <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
-                <div class="form-check mb-0">
-                    <input class="form-check-input" type="checkbox" id="selectAll">
-                    <label class="form-check-label small fw-bold text-uppercase text-muted" for="selectAll">{{ _('select_all') }}</label>
-                </div>
-                <div class="vr mx-2"></div>
-                <select name="target_location_id" class="form-select form-select-sm" style="max-width: 300px;" required>
+{% if current_user.has_role('Admin') %}
+<form method="POST">
+
+    <div class="card mb-3 shadow-sm border-0 bg-body-secondary collapse d-md-block mobile-collapsible">
+        <div class="card-body py-2 d-flex align-items-center gap-2 flex-wrap">
+            <div class="form-check mb-0">
+                <input class="form-check-input" type="checkbox" id="selectAll">
+                <label class="form-check-label small fw-bold text-uppercase text-muted" for="selectAll">{{
+                    _('select_all') }}</label>
+            </div>
+            <div class="vr mx-2"></div>
+
+            <div class="d-flex align-items-center gap-2">
+                <select name="target_location_id" class="form-select form-select-sm" style="max-width: 300px;">
                     <option value="">{{ _('move_target') }}</option>
                     {% for loc in locations %}
-                        <option value="{{ loc.id }}">{{ loc.full_path }}</option>
+                    <option value="{{ loc.id }}">{{ loc.full_path }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-sm btn-primary text-nowrap">
+                <button type="submit" class="btn btn-sm btn-outline-primary text-nowrap"
+                    formaction="{{ url_for('main.bulk_move') }}">
                     <i class="bi bi-arrow-right-circle me-1"></i>{{ _('move') }}
                 </button>
             </div>
+
+            <div class="vr mx-2"></div>
+
+            <button type="submit" class="btn btn-sm btn-primary text-nowrap"
+                formaction="{{ url_for('main.labels_config') }}">
+                <i class="bi bi-printer me-1"></i>{{ _('print_labels') }}
+            </button>
         </div>
+    </div>
     {% endif %}
 
     <div id="view-table">
@@ -158,8 +189,8 @@
                             {% endif %}
                             <th style="width: 60px;">{{ _('cover_image') }}</th>
                             <th>{{ _('title') }} / Info</th>
-                            <th class="d-none d-md-table-cell">{{ _('category') }}</th> 
-                            <th class="d-none d-lg-table-cell">{{ _('location') }}</th>  
+                            <th class="d-none d-md-table-cell">{{ _('category') }}</th>
+                            <th class="d-none d-lg-table-cell">{{ _('location') }}</th>
                             <th class="text-end"></th>
                         </tr>
                     </thead>
@@ -168,22 +199,27 @@
                         <tr>
                             {% if current_user.has_role('Admin') %}
                             <td>
-                                <input type="checkbox" name="item_ids" value="{{ item.id }}" class="form-check-input item-checkbox">
+                                <input type="checkbox" name="item_ids" value="{{ item.id }}"
+                                    class="form-check-input item-checkbox">
                             </td>
                             {% endif %}
                             <td>
                                 <div class="ratio ratio-1x1 rounded overflow-hidden" style="width: 40px;">
                                     {% if item.image_filename %}
-                                        <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" alt="Cover" style="object-fit: cover;">
+                                    <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}"
+                                        alt="Cover" style="object-fit: cover;">
                                     {% else %}
-                                        <div class="bg-body-secondary d-flex align-items-center justify-content-center text-muted h-100">
-                                            <i class="bi bi-book"></i>
-                                        </div>
+                                    <div
+                                        class="bg-body-secondary d-flex align-items-center justify-content-center text-muted h-100">
+                                        <i class="bi bi-book"></i>
+                                    </div>
                                     {% endif %}
                                 </div>
                             </td>
                             <td>
-                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none fw-bold text-body-emphasis d-block text-truncate" style="max-width: 300px;">
+                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}"
+                                    class="text-decoration-none fw-bold text-body-emphasis d-block text-truncate"
+                                    style="max-width: 300px;">
                                     {{ item.title }}
                                 </a>
                                 <div class="small text-muted d-md-none">
@@ -191,15 +227,19 @@
                                 </div>
                                 <div class="small text-muted d-none d-md-block">{{ item.author_artist or '' }}</div>
                             </td>
-                            <td class="d-none d-md-table-cell"><span class="badge bg-light text-body border">{{ _(item.category) }}</span></td>
+                            <td class="d-none d-md-table-cell"><span class="badge bg-light text-body border">{{
+                                    _(item.category) }}</span></td>
                             <td class="d-none d-lg-table-cell text-muted small">
-                                {% if item.location %}<i class="bi bi-folder2-open me-1"></i>{{ item.location.full_path }}{% endif %}
+                                {% if item.location %}<i class="bi bi-folder2-open me-1"></i>{{ item.location.full_path
+                                }}{% endif %}
                             </td>
                             <td class="text-end">
                                 {% if item.lent_to %}
-                                    <i class="bi bi-circle-fill text-warning small me-2" title="{{ _('lent_to') }} {{ item.lent_to }}"></i>
+                                <i class="bi bi-circle-fill text-warning small me-2"
+                                    title="{{ _('lent_to') }} {{ item.lent_to }}"></i>
                                 {% endif %}
-                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="btn btn-sm btn-light text-primary"><i class="bi bi-chevron-right"></i></a>
+                                <a href="{{ url_for('main.media_detail', item_id=item.id) }}"
+                                    class="btn btn-sm btn-light text-primary"><i class="bi bi-chevron-right"></i></a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -214,34 +254,39 @@
             {% for item in items %}
             <div class="col">
                 <div class="card h-100 shadow-sm border-0 position-relative hover-shadow transition-all">
-                    
-                    <div class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between pointer-events-none" style="z-index: 5;">
+
+                    <div class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between pointer-events-none"
+                        style="z-index: 5;">
                         <div class="d-flex gap-2 align-items-center">
                             {% if current_user.has_role('Admin') %}
-                            <input type="checkbox" name="item_ids" value="{{ item.id }}" class="form-check-input item-checkbox shadow-sm mt-0" style="pointer-events: auto; cursor: pointer;">
+                            <input type="checkbox" name="item_ids" value="{{ item.id }}"
+                                class="form-check-input item-checkbox shadow-sm mt-0"
+                                style="pointer-events: auto; cursor: pointer;">
                             {% endif %}
-                            <span class="badge bg-body bg-opacity-75 text-body shadow-sm border">{{ _(item.category) }}</span>
+                            <span class="badge bg-body bg-opacity-75 text-body shadow-sm border">{{ _(item.category)
+                                }}</span>
                         </div>
                         {% if item.lent_to %}
-                            <span class="badge bg-warning text-dark shadow-sm">{{ _('lent') }}</span>
+                        <span class="badge bg-warning text-dark shadow-sm">{{ _('lent') }}</span>
                         {% endif %}
                     </div>
-                    
-                    <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="text-decoration-none text-body d-block">
+
+                    <a href="{{ url_for('main.media_detail', item_id=item.id) }}"
+                        class="text-decoration-none text-body d-block">
                         <div class="ratio ratio-1x1 bg-body-secondary rounded-top">
                             {% if item.image_filename %}
-                                <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}" 
-                                     class="card-img-top object-fit-cover rounded-top" 
-                                     alt="{{ item.title }}">
+                            <img src="{{ url_for('static', filename='uploads/' + item.image_filename) }}"
+                                class="card-img-top object-fit-cover rounded-top" alt="{{ item.title }}">
                             {% else %}
-                                <div class="d-flex align-items-center justify-content-center text-muted h-100">
-                                    <i class="bi bi-image fs-1 opacity-25"></i>
-                                </div>
+                            <div class="d-flex align-items-center justify-content-center text-muted h-100">
+                                <i class="bi bi-image fs-1 opacity-25"></i>
+                            </div>
                             {% endif %}
                         </div>
 
                         <div class="card-body p-3">
-                            <h6 class="card-title text-truncate fw-bold mb-1" title="{{ item.title }}">{{ item.title }}</h6>
+                            <h6 class="card-title text-truncate fw-bold mb-1" title="{{ item.title }}">{{ item.title }}
+                            </h6>
                             <p class="card-text small text-muted mb-0 text-truncate">{{ item.author_artist or '' }}</p>
                         </div>
                     </a>
@@ -251,45 +296,45 @@
         </div>
     </div>
     {% if current_user.has_role('Admin') %}
-    </form>
-    {% endif %}
+</form>
+{% endif %}
 
-    {% if pagination and pagination.pages > 1 %}
-    <div class="d-flex justify-content-center mt-5">
-        <nav aria-label="Page navigation">
-            <ul class="pagination">
-                <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num) }}">
-                        <i class="bi bi-chevron-left"></i>
-                    </a>
-                </li>
-                
-                {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-                    {% if page_num %}
-                        <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                            <a class="page-link" href="{{ url_for('main.index', page=page_num) }}">{{ page_num }}</a>
-                        </li>
-                    {% else %}
-                        <li class="page-item disabled"><span class="page-link">...</span></li>
-                    {% endif %}
-                {% endfor %}
+{% if pagination and pagination.pages > 1 %}
+<div class="d-flex justify-content-center mt-5">
+    <nav aria-label="Page navigation">
+        <ul class="pagination">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num) }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
 
-                <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-                    <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num) }}">
-                        <i class="bi bi-chevron-right"></i>
-                    </a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+            <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('main.index', page=page_num) }}">{{ page_num }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+            {% endif %}
+            {% endfor %}
+
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num) }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</div>
+{% endif %}
 
 {% else %}
-    <div class="text-center py-5">
-        <div class="mb-3 text-muted opacity-50"><i class="bi bi-inbox fs-1"></i></div>
-        <p class="text-muted">{{ _('no_items') }}</p>
-        <a href="{{ url_for('main.media_create') }}" class="btn btn-primary">{{ _('create_new') }}</a>
-    </div>
+<div class="text-center py-5">
+    <div class="mb-3 text-muted opacity-50"><i class="bi bi-inbox fs-1"></i></div>
+    <p class="text-muted">{{ _('no_items') }}</p>
+    <a href="{{ url_for('main.media_create') }}" class="btn btn-primary">{{ _('create_new') }}</a>
+</div>
 {% endif %}
 
 <script>
@@ -300,14 +345,14 @@
         const btnGrid = document.getElementById('btn-view-grid');
 
         if (mode === 'grid') {
-            if(table) table.style.display = 'none';
-            if(grid) grid.style.display = 'block';
+            if (table) table.style.display = 'none';
+            if (grid) grid.style.display = 'block';
             btnTable.classList.remove('active');
             btnGrid.classList.add('active');
             localStorage.setItem('viewMode', 'grid');
         } else {
-            if(table) table.style.display = 'block';
-            if(grid) grid.style.display = 'none';
+            if (table) table.style.display = 'block';
+            if (grid) grid.style.display = 'none';
             btnTable.classList.add('active');
             btnGrid.classList.remove('active');
             localStorage.setItem('viewMode', 'table');
@@ -319,8 +364,8 @@
         setView(savedMode);
 
         const selectAll = document.getElementById('selectAll');
-        if(selectAll) {
-            selectAll.addEventListener('change', function() {
+        if (selectAll) {
+            selectAll.addEventListener('change', function () {
                 document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = this.checked);
             });
         }
@@ -331,11 +376,13 @@
     /* Kleiner Hover-Effekt für die Grid Cards */
     .hover-shadow:hover {
         transform: translateY(-2px);
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important;
+        box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !important;
     }
+
     .transition-all {
         transition: all 0.2s ease-in-out;
     }
+
     .object-fit-cover {
         object-fit: cover;
         width: 100%;

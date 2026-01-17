@@ -934,6 +934,49 @@ def location_delete(loc_id):
     if not l.children and l.items.count() == 0: db.session.delete(l); db.session.commit()
     return redirect(url_for('main.settings', tab='locations'))
 
+@main.route('/labels/config', methods=['POST'])
+@login_required
+def labels_config():
+    if not current_user.has_role('Admin'):
+        flash(get_text('flash_no_permission'), 'error')
+        return redirect(url_for('main.index'))
+    
+    item_ids = request.form.getlist('item_ids')
+    if not item_ids:
+        flash(get_text('no_selection'), 'warning')
+        return redirect(url_for('main.index'))
+    
+    return render_template('labels_config.html', item_ids=item_ids)
+
+@main.route('/labels/print', methods=['POST'])
+@login_required
+def labels_print():
+    if not current_user.has_role('Admin'):
+        flash(get_text('flash_no_permission'), 'error')
+        return redirect(url_for('main.index'))
+    
+    item_ids = request.form.getlist('item_ids')
+    if not item_ids:
+        flash(get_text('no_selection'), 'warning')
+        return redirect(url_for('main.index'))
+    
+    items = MediaItem.query.filter(MediaItem.id.in_(item_ids)).all()
+    
+    config = {
+        'width': request.form.get('width', '62'),
+        'height': request.form.get('height', '29'),
+        'margin_top': request.form.get('margin_top', '0'),
+        'margin_left': request.form.get('margin_left', '0'),
+        'padding': request.form.get('padding', '2'),
+        'columns': int(request.form.get('columns', 1)),
+        'show_qr': 'show_qr' in request.form,
+        'show_title': 'show_title' in request.form,
+        'show_id': 'show_id' in request.form,
+        'font_size': request.form.get('font_size', '10')
+    }
+    
+    return render_template('labels_print.html', items=items, config=config)
+
 @main.route('/admin')
 @login_required
 def admin_redirect(): return redirect(url_for('main.settings'))
