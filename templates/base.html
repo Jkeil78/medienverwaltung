@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" data-bs-theme="light">
+<html lang="{{ current_user.language if current_user.is_authenticated else 'de' }}" data-bs-theme="light">
 
 <head>
     <meta charset="UTF-8">

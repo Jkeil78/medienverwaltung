@@ -350,12 +350,20 @@
                                 }}</h5>
                             <p class="mb-3 small">{{ _('restore_warning') }}</p>
                             <form action="{{ url_for('main.admin_restore') }}" method="POST"
-                                enctype="multipart/form-data" class="d-flex gap-2">
-                                <input class="form-control form-control-sm" type="file" name="backup_file" accept=".zip"
-                                    required>
-                                <button type="submit" class="btn btn-sm btn-danger text-nowrap"
-                                    onclick="return confirm('{{ _('really_restore') }}')">{{ _('restore_submit')
-                                    }}</button>
+                                enctype="multipart/form-data">
+                                <div class="input-group input-group-sm">
+                                    <label class="btn btn-outline-secondary px-3" for="backup_file">
+                                        <i class="bi bi-folder2-open me-2"></i>{{ _('zip_file_select') }}
+                                    </label>
+                                    <input type="file" class="d-none" id="backup_file" name="backup_file" accept=".zip"
+                                        required onchange="this.nextElementSibling.value = this.files[0].name || '...'">
+                                    <input type="text" class="form-control bg-body-tertiary" readonly
+                                        id="file-name-placeholder" placeholder="{{ _('no_selection') }}">
+                                    <button type="submit" class="btn btn-danger px-4"
+                                        onclick="return confirm('{{ _('really_restore') }}')">
+                                        <i class="bi bi-arrow-repeat me-2"></i>{{ _('restore_submit') }}
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     </div>
