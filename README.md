@@ -1,7 +1,11 @@
-# Oryvian - Media Management v0.8.0
+# Oryvian - Medienverwaltung v0.8.1
 
-A web-based application for managing your physical media collection (CDs, vinyl records, books, movies, video games).
-The system provides integrations with Discogs, Spotify, and Google Books to automatically load metadata and cover art.
+Eine moderne, webbasierte Medienverwaltung für physische Sammlungen (Filme, Musik, Bücher, Spiele).
+
+## Neue Funktionen in v0.8.1
+- **Sicherheits-Update**: Systemweite CSRF-Absicherung (Cross-Site Request Forgery) mit Flask-WTF implementiert.
+- **Discogs-Optimierung**: Import-Feld wird nun dynamisch nur bei Musik-Medien (CD, Vinyl) angezeigt.
+- **Bild-Wartung**: Admin-Funktion zum Bereinigen verweister Bilder in den Einstellungen.
 
 ## Features
 
@@ -94,6 +98,18 @@ To use all features, API keys should be stored in **Settings**:
 In the admin area, you can download a complete backup at any time. It includes the SQLite database as well as all images. To restore, simply upload the ZIP file again.
 
 ## Changelog
+
+### v0.8.1
+* **Security: Global CSRF Protection**
+  * Integrated `Flask-WTF` for system-wide CSRF protection on all forms.
+  * Added global AJAX CSRF header setup to support background requests.
+* **Maintenance: Orphaned Image Cleanup**
+  * New admin utility in Settings > System to find and delete images not referenced in the database.
+* **UX: Dynamic Discogs Integration**
+  * The Discogs import UI is now intelligently hidden for non-music categories (Movies, Books, Games).
+* **Internationalization**
+  * Fixed localized labels for backup/restore file inputs.
+  * Corrected branding and subtitle translations across all supported languages.
 
 ### v0.8.0
 
