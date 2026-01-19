@@ -1,11 +1,6 @@
 # Oryvian - Medienverwaltung v0.8.1
 
-Eine moderne, webbasierte Medienverwaltung für physische Sammlungen (Filme, Musik, Bücher, Spiele).
-
-## Neue Funktionen in v0.8.1
-- **Sicherheits-Update**: Systemweite CSRF-Absicherung (Cross-Site Request Forgery) mit Flask-WTF implementiert.
-- **Discogs-Optimierung**: Import-Feld wird nun dynamisch nur bei Musik-Medien (CD, Vinyl) angezeigt.
-- **Bild-Wartung**: Admin-Funktion zum Bereinigen verweister Bilder in den Einstellungen.
+A modern, web-based Media Management for physical collections (Films, Music, Books, Games).
 
 ## Features
 
