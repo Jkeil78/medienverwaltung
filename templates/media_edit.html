@@ -3,26 +3,28 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-12 col-xl-10">
-        
+
         <div class="card shadow-sm border-0">
             <div class="card-header border-bottom py-3 d-flex justify-content-between align-items-center">
                 <h4 class="mb-0 fw-bold text-primary">
                     <i class="bi bi-pencil-square me-2"></i>{{ _('edit_media') }}
                 </h4>
                 {% if current_user.has_role('Admin') %}
-                <a href="{{ url_for('main.media_delete', item_id=item.id) }}" class="btn btn-outline-danger btn-sm" onclick="return confirm('{{ _('delete_confirm') }}');">
+                <a href="{{ url_for('main.media_delete', item_id=item.id) }}" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('{{ _('delete_confirm') }}');">
                     <i class="bi bi-trash"></i> {{ _('delete') }}
                 </a>
                 {% endif %}
             </div>
-            
+
             <div class="card-body p-4">
                 <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="overwrite_tracks" id="overwrite_tracks" value="no">
 
                     <div class="row g-4">
                         <div class="col-lg-8">
-                            
+
+                            {% if item.category in ['CD', 'Vinyl/LP'] %}
                             <div class="alert alert-secondary border mb-3">
                                 <div class="d-flex align-items-center justify-content-between">
                                     <div>
@@ -30,31 +32,37 @@
                                         <strong>{{ _('discogs_import') }}</strong><br>
                                         <small class="text-muted">{{ _('discogs_hint') }}</small>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-info text-white" onclick="discogsMatch()">
+                                    <button type="button" class="btn btn-sm btn-info text-white"
+                                        onclick="discogsMatch()">
                                         <span id="spin-discogs" class="spinner-border spinner-border-sm d-none"></span>
                                         {{ _('discogs_search') }}
                                     </button>
                                 </div>
                             </div>
+                            {% endif %}
 
                             <div class="row g-3">
                                 <div class="col-12">
                                     <label class="form-label fw-bold">Titel *</label>
-                                    <input type="text" id="title" name="title" class="form-control fw-bold" value="{{ item.title }}" required placeholder="{{ _('title') }}">
+                                    <input type="text" id="title" name="title" class="form-control fw-bold"
+                                        value="{{ item.title }}" required placeholder="{{ _('title') }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">{{ _('author_artist') }}</label>
-                                    <input type="text" id="author" name="author_artist" class="form-control" value="{{ item.author_artist or '' }}">
+                                    <input type="text" id="author" name="author_artist" class="form-control"
+                                        value="{{ item.author_artist or '' }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">{{ _('release_year') }}</label>
-                                    <input type="number" id="year" name="release_year" class="form-control" value="{{ item.release_year or '' }}">
+                                    <input type="number" id="year" name="release_year" class="form-control"
+                                        value="{{ item.release_year or '' }}">
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">{{ _('category') }}</label>
                                     <select name="category" id="category" class="form-select">
                                         {% for cat in categories %}
-                                            <option value="{{ cat }}" {% if item.category == cat %}selected{% endif %}>{{ _(cat) }}</option>
+                                        <option value="{{ cat }}" {% if item.category==cat %}selected{% endif %}>{{
+                                            _(cat) }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -63,30 +71,43 @@
                                     {% if current_user.has_role('Admin') %}
                                     <select name="location_id" class="form-select">
                                         {% for loc in locations %}
-                                            <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.full_path }}</option>
+                                        <option value="{{ loc.id }}" {% if item.location_id==loc.id %}selected{% endif
+                                            %}>{{ loc.full_path }}</option>
                                         {% endfor %}
                                     </select>
                                     {% else %}
-                                        <input type="text" class="form-control" value="{{ item.location.full_path if item.location else _('unsorted') }}" disabled>
-                                        <input type="hidden" name="location_id" value="{{ item.location_id }}">
+                                    <input type="text" class="form-control"
+                                        value="{{ item.location.full_path if item.location else _('unsorted') }}"
+                                        disabled>
+                                    <input type="hidden" name="location_id" value="{{ item.location_id }}">
                                     {% endif %}
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">{{ _('description') }}</label>
-                                    <textarea name="description" class="form-control" rows="3">{{ item.description or '' }}</textarea>
+                                    <textarea name="description" class="form-control"
+                                        rows="3">{{ item.description or '' }}</textarea>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label small text-muted">Barcode</label>
-                                    <input type="text" name="barcode" class="form-control form-control-sm" value="{{ item.barcode or '' }}">
+                                    <input type="text" name="barcode" class="form-control form-control-sm"
+                                        value="{{ item.barcode or '' }}">
                                 </div>
                             </div>
 
-                            <div id="import-tracks-area" class="mt-4 p-3 border rounded bg-body-tertiary" style="display: none;">
-                                <h6 class="text-success fw-bold"><i class="bi bi-download me-2"></i>{{ _('new_tracks_import') }}</h6>
+                            <div id="import-tracks-area" class="mt-4 p-3 border rounded bg-body-tertiary"
+                                style="display: none;">
+                                <h6 class="text-success fw-bold"><i class="bi bi-download me-2"></i>{{
+                                    _('new_tracks_import') }}</h6>
                                 <p class="small text-muted mb-2">{{ _('overwrite_warning') }}</p>
                                 <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                                     <table class="table table-sm table-bordered">
-                                        <thead><tr><th>#</th><th>{{ _('title') }}</th><th>{{ _('duration') }}</th></tr></thead>
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>{{ _('title') }}</th>
+                                                <th>{{ _('duration') }}</th>
+                                            </tr>
+                                        </thead>
                                         <tbody id="import-tracks-body"></tbody>
                                     </table>
                                 </div>
@@ -97,23 +118,28 @@
                             <div class="card bg-body-secondary border-0">
                                 <div class="card-body">
                                     <label class="form-label fw-bold">{{ _('cover_image') }}</label>
-                                    <input type="file" id="imageInput" name="image" class="d-none" accept="image/*" onchange="previewFile()">
+                                    <input type="file" id="imageInput" name="image" class="d-none" accept="image/*"
+                                        onchange="previewFile()">
                                     <input type="hidden" id="remote_image_url" name="remote_image_url">
-                                    
-                                    <div class="position-relative mt-2 bg-body rounded border d-flex align-items-center justify-content-center overflow-hidden group-hover-container" 
-                                         style="min-height: 250px; cursor: pointer;"
-                                         onclick="document.getElementById('imageInput').click();">
-                                        
-                                        <img id="preview" src="{{ url_for('static', filename='uploads/' + item.image_filename) if item.image_filename else '' }}" 
-                                             class="img-fluid" style="max-height: 250px; width: 100%; object-fit: contain; display: {{ 'block' if item.image_filename else 'none' }};">
-                                        
-                                        <span id="preview-placeholder" class="text-muted text-center p-3" style="display: {{ 'none' if item.image_filename else 'block' }};">
+
+                                    <div class="position-relative mt-2 bg-body rounded border d-flex align-items-center justify-content-center overflow-hidden group-hover-container"
+                                        style="min-height: 250px; cursor: pointer;"
+                                        onclick="document.getElementById('imageInput').click();">
+
+                                        <img id="preview"
+                                            src="{{ url_for('static', filename='uploads/' + item.image_filename) if item.image_filename else '' }}"
+                                            class="img-fluid"
+                                            style="max-height: 250px; width: 100%; object-fit: contain; display: {{ 'block' if item.image_filename else 'none' }};">
+
+                                        <span id="preview-placeholder" class="text-muted text-center p-3"
+                                            style="display: {{ 'none' if item.image_filename else 'block' }};">
                                             <i class="bi bi-cloud-upload fs-1 d-block mb-2"></i>
                                             {{ _('click_paste') }}<br>
                                             <small class="text-muted">{{ _('to_change') }}</small>
                                         </span>
-                                        
-                                        <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 opacity-0 hover-overlay transition-all">
+
+                                        <div
+                                            class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 opacity-0 hover-overlay transition-all">
                                             <span class="btn btn-light rounded-circle p-3 shadow">
                                                 <i class="bi bi-pencil-fill fs-5"></i>
                                             </span>
@@ -121,22 +147,26 @@
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="mt-3 p-3 bg-body-secondary border rounded">
                                 <label class="form-label small fw-bold">{{ _('lent_to') }}:</label>
-                                <input type="text" name="lent_to" class="form-control form-control-sm" value="{{ item.lent_to or '' }}" placeholder="Name...">
+                                <input type="text" name="lent_to" class="form-control form-control-sm"
+                                    value="{{ item.lent_to or '' }}" placeholder="Name...">
                             </div>
 
                             <div class="mt-3 text-center opacity-50">
-                                <img src="{{ url_for('main.qrcode_image', inventory_number=item.inventory_number) }}" width="80">
+                                <img src="{{ url_for('main.qrcode_image', inventory_number=item.inventory_number) }}"
+                                    width="80">
                                 <div class="small mt-1">{{ item.inventory_number }}</div>
                             </div>
                         </div>
                     </div>
 
                     <div class="d-flex justify-content-between mt-4 pt-3 border-top">
-                        <a href="{{ url_for('main.media_detail', item_id=item.id) }}" class="btn btn-outline-secondary">{{ _('cancel') }}</a>
-                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i>{{ _('save') }}</button>
+                        <a href="{{ url_for('main.media_detail', item_id=item.id) }}"
+                            class="btn btn-outline-secondary">{{ _('cancel') }}</a>
+                        <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i>{{ _('save')
+                            }}</button>
                     </div>
                 </form>
 
@@ -144,20 +174,28 @@
                     <h5 class="mb-3">{{ _('current_tracklist') }}</h5>
                     {% if item.tracks.count() > 0 %}
                     <table class="table table-sm table-striped">
-                        <thead><tr><th width="50">#</th><th>{{ _('title') }}</th><th width="80">{{ _('duration') }}</th><th width="30"></th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th width="50">#</th>
+                                <th>{{ _('title') }}</th>
+                                <th width="80">{{ _('duration') }}</th>
+                                <th width="30"></th>
+                            </tr>
+                        </thead>
                         <tbody>
                             {% for track in item.tracks %}
                             <tr>
                                 <td>{{ track.position }}</td>
                                 <td>{{ track.title }}</td>
                                 <td>{{ track.duration or '' }}</td>
-                                <td><a href="{{ url_for('main.track_delete', track_id=track.id) }}" class="text-danger"><i class="bi bi-x"></i></a></td>
+                                <td><a href="{{ url_for('main.track_delete', track_id=track.id) }}"
+                                        class="text-danger"><i class="bi bi-x"></i></a></td>
                             </tr>
                             {% endfor %}
                         </tbody>
                     </table>
                     {% else %}
-                        <p class="text-muted small">{{ _('no_tracks') }}</p>
+                    <p class="text-muted small">{{ _('no_tracks') }}</p>
                     {% endif %}
                 </div>
 
@@ -182,148 +220,153 @@
 </div>
 
 <script>
-// Paste Support (STRG+V)
-document.addEventListener('paste', function(e) {
-    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-    for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf("image") !== -1) {
-            const blob = items[i].getAsFile();
-            const file = new File([blob], "pasted_image.png", { type: blob.type });
-            
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            
-            const fileInput = document.getElementById('imageInput');
-            fileInput.files = dataTransfer.files;
-            
-            // Trigger change event manually
-            const event = new Event('change');
-            fileInput.dispatchEvent(event);
-            
-            // Clear remote url if pasted
+    // Paste Support (STRG+V)
+    document.addEventListener('paste', function (e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf("image") !== -1) {
+                const blob = items[i].getAsFile();
+                const file = new File([blob], "pasted_image.png", { type: blob.type });
+
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+
+                const fileInput = document.getElementById('imageInput');
+                fileInput.files = dataTransfer.files;
+
+                // Trigger change event manually
+                const event = new Event('change');
+                fileInput.dispatchEvent(event);
+
+                // Clear remote url if pasted
+                document.getElementById('remote_image_url').value = '';
+            }
+        }
+    });
+
+    function previewFile() {
+        const file = document.getElementById('imageInput').files[0];
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('preview-placeholder').style.display = 'none';
             document.getElementById('remote_image_url').value = '';
         }
+        if (file) reader.readAsDataURL(file);
     }
-});
 
-function previewFile() {
-    const file = document.getElementById('imageInput').files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        document.getElementById('preview').src = e.target.result;
-        document.getElementById('preview').style.display = 'block';
-        document.getElementById('preview-placeholder').style.display = 'none';
-        document.getElementById('remote_image_url').value = '';
-    }
-    if(file) reader.readAsDataURL(file);
-}
+    // Global für Tracks
+    let foundTracks = [];
 
-// Global für Tracks
-let foundTracks = [];
+    async function discogsMatch() {
+        const artist = document.getElementById('author').value;
+        const title = document.getElementById('title').value;
+        const spinner = document.getElementById('spin-discogs');
 
-async function discogsMatch() {
-    const artist = document.getElementById('author').value;
-    const title = document.getElementById('title').value;
-    const spinner = document.getElementById('spin-discogs');
-    
-    if(!artist || !title) { alert("Bitte Titel und Autor eingeben."); return; }
+        if (!artist || !title) { alert("Bitte Titel und Autor eingeben."); return; }
 
-    spinner.classList.remove('d-none');
+        spinner.classList.remove('d-none');
 
-    try {
-        const res = await fetch(`/api/search_discogs?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
-        const data = await res.json();
-        
-        spinner.classList.add('d-none');
+        try {
+            const res = await fetch(`/api/search_discogs?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+            const data = await res.json();
 
-        if(data.success) {
-            // 1. Metadaten
-            if(data.year) document.getElementById('year').value = data.year;
-            
-            // HIER WURDE DIE KATEGORIE ÜBERSCHRIEBEN - ENTFERNT!
-            // if(data.category) document.getElementById('category').value = data.category; 
+            spinner.classList.add('d-none');
 
-            // 2. Bilder Handling
-            if(data.images && data.images.length > 0) {
-                // Modal öffnen
-                const grid = document.getElementById('image-grid');
-                grid.innerHTML = '';
-                data.images.forEach(url => {
-                    const col = document.createElement('div');
-                    col.className = 'col-6 col-md-4 col-lg-3';
-                    col.innerHTML = `
+            if (data.success) {
+                // 1. Metadaten
+                if (data.year) document.getElementById('year').value = data.year;
+
+                // HIER WURDE DIE KATEGORIE ÜBERSCHRIEBEN - ENTFERNT!
+                // if(data.category) document.getElementById('category').value = data.category; 
+
+                // 2. Bilder Handling
+                if (data.images && data.images.length > 0) {
+                    // Modal öffnen
+                    const grid = document.getElementById('image-grid');
+                    grid.innerHTML = '';
+                    data.images.forEach(url => {
+                        const col = document.createElement('div');
+                        col.className = 'col-6 col-md-4 col-lg-3';
+                        col.innerHTML = `
                         <div class="card h-100 shadow-sm cursor-pointer image-card" onclick="selectImage('${url}')">
                             <img src="${url}" class="card-img-top" style="height: 150px; object-fit: cover;">
                         </div>
                     `;
-                    grid.appendChild(col);
-                });
-                
-                // Styles für Hover
-                const style = document.createElement('style');
-                style.innerHTML = `.image-card:hover { border: 2px solid #0d6efd; transform: scale(1.02); transition: 0.2s; cursor: pointer; }`;
-                document.head.appendChild(style);
+                        grid.appendChild(col);
+                    });
 
-                const modal = new bootstrap.Modal(document.getElementById('imageModal'));
-                modal.show();
-            } else if (data.image_url) {
-                // Fallback wenn nur 1 Bild
-                selectImage(data.image_url);
-            }
+                    // Styles für Hover
+                    const style = document.createElement('style');
+                    style.innerHTML = `.image-card:hover { border: 2px solid #0d6efd; transform: scale(1.02); transition: 0.2s; cursor: pointer; }`;
+                    document.head.appendChild(style);
 
-            // 3. Tracks Handling
-            if(data.tracks && data.tracks.length > 0) {
-                const tbody = document.getElementById('import-tracks-body');
-                tbody.innerHTML = '';
-                
-                data.tracks.forEach(t => {
-                    tbody.innerHTML += `
+                    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+                    modal.show();
+                } else if (data.image_url) {
+                    // Fallback wenn nur 1 Bild
+                    selectImage(data.image_url);
+                }
+
+                // 3. Tracks Handling
+                if (data.tracks && data.tracks.length > 0) {
+                    const tbody = document.getElementById('import-tracks-body');
+                    tbody.innerHTML = '';
+
+                    data.tracks.forEach(t => {
+                        tbody.innerHTML += `
                         <tr>
                             <td><input type="text" name="track_position" value="${t.position}" class="form-control form-control-sm text-center" style="width:50px;"></td>
                             <td><input type="text" name="track_title" value="${t.title}" class="form-control form-control-sm"></td>
                             <td><input type="text" name="track_duration" value="${t.duration}" class="form-control form-control-sm"></td>
                         </tr>
                     `;
-                });
+                    });
 
-                // UI Umschalten
-                document.getElementById('import-tracks-area').style.display = 'block';
-                document.getElementById('existing-tracks-area').style.opacity = '0.5';
-                document.getElementById('overwrite_tracks').value = 'yes';
-                
-                // Kurzes Feedback, falls keine Bilder dabei waren
-                if(!data.images || data.images.length === 0) {
-                    alert(`Discogs hat ${data.tracks.length} Tracks gefunden, aber keine Bilder.`);
+                    // UI Umschalten
+                    document.getElementById('import-tracks-area').style.display = 'block';
+                    document.getElementById('existing-tracks-area').style.opacity = '0.5';
+                    document.getElementById('overwrite_tracks').value = 'yes';
+
+                    // Kurzes Feedback, falls keine Bilder dabei waren
+                    if (!data.images || data.images.length === 0) {
+                        alert(`Discogs hat ${data.tracks.length} Tracks gefunden, aber keine Bilder.`);
+                    }
+                } else {
+                    alert("Daten gefunden, aber keine Trackliste.");
                 }
+
             } else {
-                alert("Daten gefunden, aber keine Trackliste.");
+                alert(data.message || "Nichts gefunden.");
             }
-
-        } else {
-            alert(data.message || "Nichts gefunden.");
+        } catch (e) {
+            console.error(e);
+            spinner.classList.add('d-none');
+            alert("Fehler bei der Verbindung.");
         }
-    } catch(e) {
-        console.error(e);
-        spinner.classList.add('d-none');
-        alert("Fehler bei der Verbindung.");
     }
-}
 
-function selectImage(url) {
-    document.getElementById('remote_image_url').value = url;
-    document.getElementById('preview').src = url;
-    document.getElementById('preview').style.display = 'block';
-    document.getElementById('preview-placeholder').style.display = 'none';
-    
-    // Modal schließen falls offen
-    const modalEl = document.getElementById('imageModal');
-    const modal = bootstrap.Modal.getInstance(modalEl);
-    if(modal) modal.hide();
-}
+    function selectImage(url) {
+        document.getElementById('remote_image_url').value = url;
+        document.getElementById('preview').src = url;
+        document.getElementById('preview').style.display = 'block';
+        document.getElementById('preview-placeholder').style.display = 'none';
+
+        // Modal schließen falls offen
+        const modalEl = document.getElementById('imageModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
 </script>
 
 <style>
-.hover-overlay { transition: opacity 0.2s ease-in-out; }
-.group-hover-container:hover .hover-overlay { opacity: 1 !important; }
+    .hover-overlay {
+        transition: opacity 0.2s ease-in-out;
+    }
+
+    .group-hover-container:hover .hover-overlay {
+        opacity: 1 !important;
+    }
 </style>
 {% endblock %}
