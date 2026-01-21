@@ -92,14 +92,25 @@ if __name__ == '__main__':
                         conn.commit()
 
             if 'media_item' in inspector.get_table_names():
-                # On SQLite, to remove a UNIQUE constraint added via Column(unique=True),
-                # we must recreate the table because ALTER TABLE DROP CONSTRAINT is not supported.
+                # On SQLite, UNIQUE constraints can be represented as indexes OR unique constraints
                 indexes = inspector.get_indexes('media_item')
+                constraints = inspector.get_unique_constraints('media_item')
+                
                 has_unique_barcode = False
+                # Check indexes
                 for idx in indexes:
                     if 'barcode' in idx['column_names'] and idx['unique']:
                         has_unique_barcode = True
+                        print(f"DEBUG: Found unique index involving barcode: {idx['name']}")
                         break
+                
+                # Check unique constraints if not found in indexes
+                if not has_unique_barcode:
+                    for cnst in constraints:
+                        if 'barcode' in cnst['column_names']:
+                            has_unique_barcode = True
+                            print(f"DEBUG: Found unique constraint involving barcode: {cnst['name']}")
+                            break
                 
                 if has_unique_barcode:
                     print("DEBUG: Applying migration - Recreating 'media_item' table to remove UNIQUE constraint on 'barcode'")
@@ -111,9 +122,11 @@ if __name__ == '__main__':
                             # 2. Rename old table
                             conn.execute(text("ALTER TABLE media_item RENAME TO media_item_old"))
                             conn.commit()
+                            print("DEBUG: Renamed media_item to media_item_old")
                         
                         # 3. Create new table (with current model: unique=False)
                         db.create_all()
+                        print("DEBUG: Created new media_item table via db.create_all()")
                         
                         with db.engine.connect() as conn:
                             # 4. Copy data (explicit columns to avoid issues with order/count)
@@ -129,11 +142,14 @@ if __name__ == '__main__':
                             print("DEBUG: Migration successful - 'media_item' recreated without UNIQUE constraint")
                     except Exception as e:
                         print(f"DEBUG: Migration failed: {e}")
-                        # If failed, try to restore
-                        with db.engine.connect() as conn:
-                            conn.execute(text("PRAGMA foreign_keys=ON"))
-                            # If media_item_old exists and media_item doesn't, rename back? 
-                            # But better not mess up more unless sure.
+                        # Clean up if possible
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text("PRAGMA foreign_keys=ON"))
+                                conn.commit()
+                        except: pass
+                else:
+                    print("DEBUG: No unique constraint/index found on 'media_item.barcode'. Skipping migration.")
         except Exception as e:
             print(f"DEBUG: Migration warning: {e}")
         
