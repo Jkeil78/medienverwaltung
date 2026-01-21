@@ -338,7 +338,7 @@
 
             // Check for duplicates after data is filled
             if (typeof checkDuplicate === 'function' && barcodeInput.value) {
-                checkDuplicate(barcodeInput.value.trim());
+                checkDuplicate(barcodeInput.value.trim(), 'passive');
             }
         }
     }
@@ -355,6 +355,7 @@
     const barcodeInput = document.getElementById('barcode');
     const createForm = document.getElementById('createForm');
     const btnCreateAnyway = document.getElementById('btn-create-anyway');
+    let isSubmitTriggered = false;
 
     // Add a hidden field to preserve which submit button was clicked
     const actionInput = document.createElement('input');
@@ -362,19 +363,20 @@
     actionInput.name = 'commit_action';
     createForm.appendChild(actionInput);
 
-    async function checkDuplicate(barcode) {
+    async function checkDuplicate(barcode, triggerSource = 'passive') {
         if (!duplicateCheckEnabled || !barcode || barcode === lastCheckedBarcode) {
-            console.log("Skipping duplicate check for barcode:", barcode);
+            console.log("Skipping duplicate check for barcode:", barcode, "Trigger:", triggerSource);
             return false;
         }
 
         try {
-            console.log("Checking duplicate for:", barcode);
+            console.log("Checking duplicate for:", barcode, "Trigger:", triggerSource);
             const response = await fetch('/api/check_duplicate/' + encodeURIComponent(barcode));
             const data = await response.json();
             console.log("Duplicate API response:", data);
 
             if (data.exists) {
+                isSubmitTriggered = (triggerSource === 'submit');
                 document.getElementById('duplicate-barcode-info').textContent = barcode;
                 const modalEl = document.getElementById('duplicateModal');
                 const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -393,18 +395,19 @@
     // Check on barcode change (manual entry)
     barcodeInput.addEventListener('change', () => {
         console.log("Barcode change detected:", barcodeInput.value);
-        checkDuplicate(barcodeInput.value.trim());
+        checkDuplicate(barcodeInput.value.trim(), 'passive');
     });
 
     // Handle "Create anyway"
     btnCreateAnyway.addEventListener('click', () => {
-        console.log("User accepted duplicate.");
+        console.log("User accepted duplicate. Submit triggered:", isSubmitTriggered);
         duplicateAccepted = true;
         const modal = bootstrap.Modal.getInstance(document.getElementById('duplicateModal'));
         if (modal) modal.hide();
 
-        // Form is submitted by the user clicking the button again or we can trigger it
-        createForm.submit();
+        if (isSubmitTriggered) {
+            createForm.submit();
+        }
     });
 
     // Main Submit Handler
@@ -417,17 +420,17 @@
         const barcode = barcodeInput.value.trim();
         console.log("Submit triggered. Barcode:", barcode, "Enabled:", duplicateCheckEnabled);
 
+        // Set the clicked button's value to our hidden field (always do this on submit)
+        const clickedBtn = e.submitter;
+        if (clickedBtn && clickedBtn.name === 'commit_action') {
+            actionInput.value = clickedBtn.value;
+            console.log("Preserved action:", clickedBtn.value);
+        }
+
         if (duplicateCheckEnabled && barcode) {
             e.preventDefault(); // Stop submission to check
 
-            // Set the clicked button's value to our hidden field
-            const clickedBtn = e.submitter;
-            if (clickedBtn && clickedBtn.name === 'commit_action') {
-                actionInput.value = clickedBtn.value;
-                console.log("Preserved action:", clickedBtn.value);
-            }
-
-            const isDuplicate = await checkDuplicate(barcode);
+            const isDuplicate = await checkDuplicate(barcode, 'submit');
             if (!isDuplicate) {
                 console.log("No duplicate found, submitting...");
                 duplicateAccepted = true;
@@ -440,8 +443,8 @@
 
     // Integrate with existing lookupBarcode
     // The lookupBarcode() function is called via onclick in HTML or keypress.
-    // The 'finally' block of lookupBarcode() now explicitly calls checkDuplicate().
-    // This ensures a duplicate check happens after data is fetched and the barcode field is potentially updated.
+    // The 'finally' block of lookupBarcode() now explicitly calls checkDuplicate(barcodeInput.value.trim(), 'passive').
+    // This ensures a duplicate check happens after data is fetched and the barcode field is potentially updated, without auto-submitting.
 </script>
 
 <style>

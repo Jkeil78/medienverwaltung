@@ -443,9 +443,7 @@ def api_lookup(barcode):
 @main.route('/api/check_duplicate/<barcode>')
 @login_required
 def api_check_duplicate(barcode):
-    print(f"DEBUG: Checking duplicate for barcode: {barcode}")
     exists = MediaItem.query.filter_by(barcode=barcode).first() is not None
-    print(f"DEBUG: Duplicate check result: {exists}")
     return jsonify({'exists': exists})
 
 # -- QR Code --
