@@ -92,15 +92,48 @@ if __name__ == '__main__':
                         conn.commit()
 
             if 'media_item' in inspector.get_table_names():
-                # On SQLite, we might need to drop the unique index if it exists
-                # inspector.get_indexes('media_item') will show if 'barcode' has a unique index
+                # On SQLite, to remove a UNIQUE constraint added via Column(unique=True),
+                # we must recreate the table because ALTER TABLE DROP CONSTRAINT is not supported.
                 indexes = inspector.get_indexes('media_item')
+                has_unique_barcode = False
                 for idx in indexes:
                     if 'barcode' in idx['column_names'] and idx['unique']:
-                        print(f"DEBUG: Applying migration - Dropping unique index {idx['name']} on 'barcode'")
+                        has_unique_barcode = True
+                        break
+                
+                if has_unique_barcode:
+                    print("DEBUG: Applying migration - Recreating 'media_item' table to remove UNIQUE constraint on 'barcode'")
+                    try:
                         with db.engine.connect() as conn:
-                            conn.execute(text(f"DROP INDEX {idx['name']}"))
+                            # 1. Disable FKs
+                            conn.execute(text("PRAGMA foreign_keys=OFF"))
+                            
+                            # 2. Rename old table
+                            conn.execute(text("ALTER TABLE media_item RENAME TO media_item_old"))
                             conn.commit()
+                        
+                        # 3. Create new table (with current model: unique=False)
+                        db.create_all()
+                        
+                        with db.engine.connect() as conn:
+                            # 4. Copy data (explicit columns to avoid issues with order/count)
+                            cols = "id, inventory_number, barcode, title, category, author_artist, release_year, description, image_filename, location_id, collection_id, volume_number, lent_to, lent_at, created_at, user_id"
+                            conn.execute(text(f"INSERT INTO media_item ({cols}) SELECT {cols} FROM media_item_old"))
+                            
+                            # 5. Drop old table
+                            conn.execute(text("DROP TABLE media_item_old"))
+                            
+                            # 6. Re-enable FKs
+                            conn.execute(text("PRAGMA foreign_keys=ON"))
+                            conn.commit()
+                            print("DEBUG: Migration successful - 'media_item' recreated without UNIQUE constraint")
+                    except Exception as e:
+                        print(f"DEBUG: Migration failed: {e}")
+                        # If failed, try to restore
+                        with db.engine.connect() as conn:
+                            conn.execute(text("PRAGMA foreign_keys=ON"))
+                            # If media_item_old exists and media_item doesn't, rename back? 
+                            # But better not mess up more unless sure.
         except Exception as e:
             print(f"DEBUG: Migration warning: {e}")
         
