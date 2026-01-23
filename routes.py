@@ -1198,7 +1198,7 @@ def media_bulk_export_csv():
             row.append(val if val is not None else "")
         writer.writerow(row)
 
-    response = Response(output.getvalue(), mimetype='text/csv')
+    response = Response("\ufeff" + output.getvalue(), mimetype='text/csv')
     response.headers.set("Content-Disposition", "attachment", filename=f"oryvian_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
     return response
 
